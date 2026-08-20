@@ -2,9 +2,21 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.2.1";
+export const VERSION = "1.3.0";
 
 export const RELEASES = [
+  {
+    version: "1.3.0",
+    date: "2026-08-20",
+    title: "Labels that teach the position",
+    notes: [
+      "The position abbreviation now stays in the circle, where a coach reads it fastest.",
+      "The position is spelled out above the marker — LG reads as Left Guard — so a sheet teaches the position instead of assuming it.",
+      "A kid's jersey number sits above his name below the marker.",
+      "Labels are placed rather than just drawn: each one claims its space, and anything that would collide moves to a second row or beside the player. A tight offensive line staggers instead of running together, and a stacked backfield labels to the side.",
+      "Numbers and names outrank position words for space — finding your own name on the sheet matters more than the job title.",
+    ],
+  },
   {
     version: "1.2.1",
     date: "2026-08-20",

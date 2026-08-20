@@ -1108,6 +1108,24 @@ const PLAYS = [
    shape, so everything downstream treats them identically.
    --------------------------------------------------------------- */
 const OL_ORDER = ['LT','LG','C','RG','RT'];
+
+/* What each abbreviation actually stands for. Shown above the marker so a kid
+   reading the sheet learns that LG means left guard, rather than having to be
+   told every practice. Left/right is dropped — the diagram already shows which
+   side he is on, and "Left Defensive Tackle" is a lot of ink for that. */
+const POSITION_NAMES = {
+  LT:'Left Tackle', LG:'Left Guard', C:'Center', RG:'Right Guard', RT:'Right Tackle',
+  QB:'Quarterback', FB:'Fullback', TB:'Tailback', HB:'Halfback', RB:'Running Back',
+  LH:'Halfback', RH:'Halfback', BB:'Blocking Back', WB:'Wingback',
+  TE:'Tight End', TY:'Tight End', E:'End', SE:'Split End',
+  X:'Wide Receiver', Z:'Wide Receiver', H:'Slot Receiver', Y:'Slot Receiver',
+  SL:'Slot Receiver', SR:'Slot Receiver',
+  NG:'Nose Guard', DT:'Defensive Tackle', DE:'Defensive End',
+  MLB:'Middle Linebacker', LB:'Linebacker', ILB:'Inside Linebacker', OLB:'Outside Linebacker',
+  WLB:'Weak Linebacker', SLB:'Strong Linebacker',
+  CB:'Cornerback', FS:'Free Safety', SS:'Strong Safety', MON:'Rover',
+};
+const positionName = key => POSITION_NAMES[String(key).replace(/-[LR]$/, '')] || '';
 const uid = () => 'p' + Math.random().toString(36).slice(2, 9);
 
 function roleOf(side, key){
@@ -1449,8 +1467,31 @@ function drawPaths(){
 function drawPlayers(){
   const g = L.player; g.textContent = '';
   if (!S.play) return;
-  S.play.players.forEach(p => {
-    const pos = drawPos(p);
+  const T = theme();
+
+  /* Labels are placed, not just drawn. Five linemen sit 1.6 yards apart — about
+     48 units — and "Left Guard" is wider than that, so writing every position
+     out unconditionally turns the line into "Left TackleLeft GuardCenter". So
+     each label claims a box, and anything that would land on top of a box
+     already taken is either nudged to a second row or dropped. Crowded parts of
+     the formation quietly show fewer words; open parts show them all. */
+  const taken = [];
+  const claim = (x, y, w, h) => {
+    const box = { x1:x - w/2, y1:y - h, x2:x + w/2, y2:y };
+    const clash = taken.some(b =>
+      !(box.x2 < b.x1 || box.x1 > b.x2 || box.y2 < b.y1 || box.y1 > b.y2));
+    if (clash) return false;
+    taken.push(box);
+    return true;
+  };
+  const textWidth = (str, size) => str.length * size * 0.56;
+
+  const drawn = S.play.players.map(p => ({ p, pos:drawPos(p) }));
+
+  // Markers first: no label may ever sit on top of a player.
+  drawn.forEach(({ pos }) => taken.push({ x1:pos.x-R, y1:pos.y-R, x2:pos.x+R, y2:pos.y+R }));
+
+  drawn.forEach(({ p, pos }) => {
     const sel = p.id === S.selected;
     const off = p.side === 'offense';
     const fill   = off ? (p.role === 'ol' ? '#26415f' : '#12233d') : '#b3151f';
@@ -1461,22 +1502,73 @@ function drawPlayers(){
     if (off) el('circle',{ cx:pos.x, cy:pos.y, r:R, fill, stroke, 'stroke-width':sw }, grp);
     else     el('rect',{ x:pos.x-R, y:pos.y-R, width:R*2, height:R*2, rx:7, fill, stroke, 'stroke-width':sw }, grp);
 
-    const jersey = p.jersey != null ? store.roster[p.jersey] : null;
-    const main   = jersey ? String(jersey.num || '#') : p.label;
-    el('text',{ x:pos.x, y:pos.y + (main.length > 3 ? 6 : 7), 'text-anchor':'middle',
+    // The abbreviation always sits in the marker. It is what a coach reads at a
+    // glance and it never moves, assigned or not.
+    const abbr = p.label;
+    el('text',{ x:pos.x, y:pos.y + (abbr.length > 3 ? 6 : 7), 'text-anchor':'middle',
                 fill:'#ffffff', 'font-family':FONT, 'font-weight':800,
-                'font-size': main.length > 3 ? 17 : main.length > 2 ? 19 : 21,
-                'pointer-events':'none' }, grp).textContent = main;
+                'font-size': abbr.length > 3 ? 17 : abbr.length > 2 ? 19 : 21,
+                'pointer-events':'none' }, grp).textContent = abbr;
 
-    if (jersey){
-      const T = theme();
-      el('text',{ x:pos.x, y:pos.y-R-9, 'text-anchor':'middle', fill:T.nameFill,'fill-opacity':.9,
-                  'font-family':FONT,'font-weight':800,'font-size':17,'pointer-events':'none',
-                  stroke:T.halo,'stroke-width':4,'paint-order':'stroke' }, grp).textContent = p.label;
-      if (jersey.name)
-        el('text',{ x:pos.x, y:pos.y+R+22, 'text-anchor':'middle', fill:T.nameFill,
-                    'font-family':FONT,'font-weight':700,'font-size':18,'pointer-events':'none',
-                    stroke:T.halo,'stroke-width':4.5,'paint-order':'stroke' }, grp).textContent = jersey.name;
+    const halo = (x, y, anchor, size, weight, text, opacity) =>
+      el('text',{ x, y, 'text-anchor':anchor, fill:T.nameFill, 'font-family':FONT,
+                  'font-weight':weight, 'font-size':size, 'fill-opacity':opacity ?? 1,
+                  'pointer-events':'none', stroke:T.halo, 'stroke-width':size / 3.6,
+                  'paint-order':'stroke' }, grp).textContent = text;
+
+    // Below the marker: the number, then who wears it. These win any contest for
+    // space — a kid finding his own name matters more than a job title does.
+    // If the backfield is stacked too tightly for that, they go beside him
+    // instead; an I-formation puts three players 1.5 yards apart and there is
+    // simply no room underneath.
+    const jersey = p.jersey != null ? store.roster[p.jersey] : null;
+    if (jersey && (jersey.num || jersey.name)){
+      const lines = [];
+      if (jersey.num)  lines.push({ text:'#' + jersey.num, size:19, weight:800 });
+      if (jersey.name) lines.push({ text:jersey.name,      size:17, weight:700 });
+      const widest = Math.max(...lines.map(l => textWidth(l.text, l.size)));
+      const tall   = lines.reduce((h, l) => h + l.size, 0);
+
+      const spots = [
+        { x:pos.x,            y:pos.y + R + 21, anchor:'middle', cx:pos.x },
+        { x:pos.x + R + 8,    y:pos.y + 6,      anchor:'start',  cx:pos.x + R + 8 + widest / 2 },
+        { x:pos.x - R - 8,    y:pos.y + 6,      anchor:'end',    cx:pos.x - R - 8 - widest / 2 },
+      ];
+      for (const spot of spots){
+        if (!claim(spot.cx, spot.y + tall - lines[0].size, widest, tall)) continue;
+        let y = spot.y;
+        lines.forEach(l => { halo(spot.x, y, spot.anchor, l.size, l.weight, l.text); y += l.size; });
+        break;
+      }
+    }
+  });
+
+  // Position names last, so they yield to markers, numbers and kids' names.
+  // The selected player goes first — whoever you are working on always gets his.
+  const order = drawn.slice().sort((a, b) =>
+    (b.p.id === S.selected ? 1 : 0) - (a.p.id === S.selected ? 1 : 0));
+
+  order.forEach(({ p, pos }) => {
+    const full = positionName(p.key);
+    if (!full) return;
+    const size = 15, w = textWidth(full, size);
+    const grp = g.querySelector(`[data-player="${CSS.escape(p.id)}"]`);
+    // First choice sits just above the marker; second choice is a row higher,
+    // which is what lets a tight offensive line stagger instead of collide.
+    const spots = [
+      { x:pos.x,         y:pos.y - R - 10, anchor:'middle', cx:pos.x },
+      { x:pos.x,         y:pos.y - R - 30, anchor:'middle', cx:pos.x },
+      { x:pos.x + R + 8, y:pos.y - R + 4,  anchor:'start',  cx:pos.x + R + 8 + w / 2 },
+      { x:pos.x - R - 8, y:pos.y - R + 4,  anchor:'end',    cx:pos.x - R - 8 - w / 2 },
+    ];
+    for (const spot of spots){
+      if (claim(spot.cx, spot.y, w, size)){
+        el('text',{ x:spot.x, y:spot.y, 'text-anchor':spot.anchor, fill:T.nameFill,
+                    'font-family':FONT, 'font-weight':700, 'font-size':size, 'fill-opacity':.92,
+                    'pointer-events':'none', stroke:T.halo, 'stroke-width':4,
+                    'paint-order':'stroke' }, grp || g).textContent = full;
+        return;
+      }
     }
   });
 }
