@@ -1200,7 +1200,7 @@ const layer = id => { const g = document.createElementNS(NS,'g'); g.setAttribute
 let L = {};
 function initLayers(){
   svg.textContent = '';
-  L = { turf:layer('l-turf'), ghost:layer('l-ghost'), path:layer('l-path'),
+  L = { turf:layer('l-turf'), path:layer('l-path'),
         ball:layer('l-ball'), player:layer('l-player'), handle:layer('l-handle'),
         chrome:layer('l-chrome') };
 }
@@ -1338,7 +1338,7 @@ let S = {
   selected:null,          // player id
   mode:'select',          // 'select' | 'draw'
   drawTarget:null,        // { playerId, asgIndex }
-  ghost:false, anim:null, animRAF:0, dirty:false
+  anim:null, animRAF:0, dirty:false
 };
 
 /** Pull the team's playbook and roster off the server. */
