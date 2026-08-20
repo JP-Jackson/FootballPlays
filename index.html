@@ -1,0 +1,2223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#123524">
+<title>Coach's Playbook — Youth Football Play Designer</title>
+<style>
+:root{
+  --navy:#12233d; --navy-2:#1d3557; --crimson:#b3151f; --crimson-2:#8d1018;
+  --turf:#1f7a45; --turf-dk:#186036; --turf-lt:#2a8f52;
+  --amber:#e0902f;
+  --ink:#16202b; --muted:#6b7a8c; --line:#dde4ec; --bg:#f2f5f8; --card:#fff;
+  --shadow:0 1px 2px rgba(16,32,50,.06),0 6px 20px rgba(16,32,50,.08);
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:10px 16px;background:linear-gradient(180deg,#16304f,#12233d);color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);position:sticky;top:0;z-index:40;
+}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand .ball{font-size:24px;line-height:1}
+.brand h1{font-size:17px}
+.brand p{margin:0;font-size:11.5px;color:#9fb4cd;letter-spacing:.02em}
+.tb-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:1px solid transparent;background:#fff;color:var(--ink);
+  padding:8px 13px;border-radius:8px;font-size:13.5px;font-weight:600;
+  transition:transform .06s ease, filter .15s ease, background .15s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn:hover{filter:brightness(.97)}
+.btn.ghost{background:rgba(255,255,255,.1);color:#e8eff7;border-color:rgba(255,255,255,.22)}
+.btn.ghost:hover{background:rgba(255,255,255,.18)}
+.btn.primary{background:var(--turf-lt);color:#fff}
+.btn.primary:hover{background:var(--turf)}
+.btn.danger{background:#fdecec;color:var(--crimson-2);border-color:#f6cfd1}
+.btn.sm{padding:5px 9px;font-size:12.5px;border-radius:7px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- layout ---------- */
+.layout{
+  display:grid;grid-template-columns:270px minmax(0,1fr) 292px;
+  gap:14px;padding:14px;align-items:start;max-width:1680px;margin:0 auto;
+}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.panel-hd{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.panel-hd h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.panel-bd{padding:12px 13px}
+.sidebar{position:sticky;top:66px;max-height:calc(100vh - 82px);display:flex;flex-direction:column}
+.scroll{overflow-y:auto;flex:1;min-height:0}
+
+/* ---------- controls ---------- */
+.seg{display:flex;background:#eef2f7;border-radius:9px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:7px;font-weight:700;font-size:13.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,32,50,.16)}
+.seg button[aria-pressed="true"][data-side="offense"]{color:var(--navy-2)}
+.seg button[aria-pressed="true"][data-side="defense"]{color:var(--crimson)}
+.field-row{display:flex;flex-direction:column;gap:5px;margin-top:12px}
+.field-row label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+select,input[type=text],input[type=number],textarea{
+  width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;
+}
+select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset:0;border-color:#8fb8dd}
+.count-wrap{display:flex;align-items:center;gap:10px}
+.count-wrap input[type=range]{flex:1;accent-color:var(--turf-lt)}
+.count-pill{min-width:62px;text-align:center;font-weight:800;font-size:13px;background:#eef2f7;border-radius:7px;padding:6px 4px}
+
+/* ---------- play list ---------- */
+.grp{margin:14px 0 4px;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#9aa8b8}
+.grp:first-child{margin-top:2px}
+.play-item{
+  display:block;width:100%;text-align:left;border:1px solid transparent;background:transparent;
+  padding:7px 9px;border-radius:8px;line-height:1.25;
+}
+.play-item:hover{background:#f1f5f9}
+.play-item[aria-current="true"]{background:#eaf4ff;border-color:#bcd9f5}
+.play-item .nm{font-weight:650;font-size:13.5px}
+.play-item .sub{font-size:11.5px;color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;padding:10px 2px}
+
+/* ---------- stage ---------- */
+.stage{display:flex;flex-direction:column;gap:12px;min-width:0}
+.stage-hd{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;flex-wrap:wrap}
+.stage-hd .nmwrap{flex:1;min-width:200px}
+#play-name{font-size:19px;font-weight:800;border:1px solid transparent;background:transparent;padding:4px 6px;margin-left:-6px;border-radius:7px}
+#play-name:hover{background:#f4f7fa}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;padding-left:0}
+.tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:#eef2f7;color:var(--muted)}
+.tag.off{background:#e8effa;color:var(--navy-2)}
+.tag.def{background:#fdeced;color:var(--crimson-2)}
+.hdr-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.opt{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;letter-spacing:.05em;
+     text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.opt select{width:auto;padding:6px 9px;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink)}
+.opt.chk{text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:650}
+.opt.chk input{width:auto}
+.note{margin:8px 14px 0;padding:9px 12px;background:#fff8e8;border:1px solid #f2e0b8;border-left:3px solid var(--amber);border-radius:7px;font-size:13px;color:#6b5320}
+.note b{color:#4d3a12}
+
+.field-wrap{padding:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+#field{display:block;width:100%;height:auto;touch-action:none;-webkit-user-select:none;user-select:none;border-radius:6px}
+#field.drawing{cursor:crosshair}
+
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:11px 13px}
+.hint{
+  display:none;align-items:center;gap:9px;margin:0 0 0 0;padding:9px 13px;
+  background:#e9f6ee;border:1px solid #bfe3cd;border-radius:var(--r);font-size:13px;color:#1d5c37;font-weight:600;
+}
+.hint.on{display:flex}
+.hint .spacer{margin-left:auto}
+
+/* ---------- inspector ---------- */
+.insp-empty{color:var(--muted);font-size:13.5px;line-height:1.5}
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
+.chip[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.def[aria-pressed="true"]{background:var(--crimson);border-color:var(--crimson)}
+.asg{border:1px solid var(--line);border-radius:9px;padding:9px;margin-top:8px;background:#fbfcfe}
+.asg-hd{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.asg-hd .swatch{width:26px;height:0;border-top-width:3px;border-top-style:solid;flex:none}
+.asg-hd .ttl{font-weight:700;font-size:13px;text-transform:capitalize}
+.asg-hd .pts{margin-left:auto;font-size:11.5px;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sec{border-top:1px solid var(--line);margin-top:13px;padding-top:12px}
+.sec h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:7px}
+
+/* ---------- legend ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;padding:12px 14px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12px;color:#41505f}
+.lg svg{flex:none}
+
+/* ---------- modal ---------- */
+.modal{position:fixed;inset:0;background:rgba(12,24,38,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:100}
+.modal.on{display:flex}
+.sheet{background:#fff;border-radius:14px;width:min(560px,100%);max-height:88vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+.sheet-hd{display:flex;align-items:center;padding:15px 18px;border-bottom:1px solid var(--line)}
+.sheet-hd h2{font-size:17px}
+.sheet-hd .x{margin-left:auto;border:0;background:#eef2f7;width:30px;height:30px;border-radius:8px;font-size:17px;line-height:1;color:var(--muted)}
+.sheet-bd{padding:18px}
+.sheet-ft{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:#fafbfd;border-radius:0 0 14px 14px}
+.roster-row{display:grid;grid-template-columns:74px 1fr 34px;gap:7px;margin-bottom:7px;align-items:center}
+.roster-row .rm{border:0;background:#fdecec;color:var(--crimson-2);border-radius:7px;height:34px;font-weight:700}
+.help h3{margin:16px 0 6px;font-size:14px}
+.help h3:first-child{margin-top:0}
+.help p,.help li{font-size:13.5px;color:#3d4b5a;line-height:1.55}
+.help ul{margin:6px 0;padding-left:20px}
+.help kbd{background:#eef2f7;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+.toast{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(14px);
+  background:var(--navy);color:#fff;padding:10px 18px;border-radius:9px;font-size:13.5px;font-weight:600;
+  opacity:0;pointer-events:none;transition:.22s ease;z-index:200;box-shadow:0 8px 26px rgba(0,0,0,.28)
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .layout{grid-template-columns:236px minmax(0,1fr);}
+  .panel-right{grid-column:1 / -1}
+  .panel-right.sidebar{position:static;max-height:none}
+}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);padding:10px;gap:10px}
+  .panel-left{order:2}
+  .stage{order:1}
+  .panel-right{order:3}
+  .sidebar{position:static;max-height:none}
+  .panel-left .scroll{max-height:340px}
+  .brand p{display:none}
+}
+
+/* ---------- print ---------- */
+#print-area{display:none}
+.print-page{page-break-after:always;break-after:page;padding:0}
+.print-page:last-child{page-break-after:auto;break-after:auto}
+.print-page svg{width:100%;height:auto;display:block}
+.print-page .pnote{margin-top:10px;padding:9px 12px;border:1px solid #d9e0e8;border-left:3px solid #e0902f;
+  border-radius:6px;font-size:12.5px;color:#3d4b5a;line-height:1.5}
+.print-page .pfoot{margin-top:8px;font-size:10.5px;color:#95a2b1;display:flex;justify-content:space-between}
+@media print{
+  body>*{display:none !important}
+  #print-area{display:block !important}
+  body{background:#fff;margin:0}
+  @page{margin:11mm}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="ball">🏈</span>
+    <div>
+      <h1>Coach&rsquo;s Playbook</h1>
+      <p>Youth football play designer</p>
+    </div>
+  </div>
+  <div class="tb-actions">
+    <button class="btn primary" id="btn-new">+ New Play</button>
+    <button class="btn ghost" id="btn-roster">Roster</button>
+    <button class="btn ghost" id="btn-download">Backup</button>
+    <button class="btn ghost" id="btn-upload">Restore</button>
+    <button class="btn ghost" id="btn-help">Help</button>
+    <input type="file" id="file-input" accept="application/json,.json" hidden>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ LEFT: play library ============ -->
+  <aside class="panel panel-left sidebar">
+    <div class="panel-bd" style="border-bottom:1px solid var(--line)">
+      <div class="seg" id="side-toggle" role="group" aria-label="Side of the ball">
+        <button data-side="offense" aria-pressed="true">Offense</button>
+        <button data-side="defense" aria-pressed="false">Defense</button>
+      </div>
+      <div class="field-row">
+        <label for="count-range">Players per side</label>
+        <div class="count-wrap">
+          <input type="range" id="count-range" min="5" max="11" step="1" value="11">
+          <span class="count-pill" id="count-pill">11 v 11</span>
+        </div>
+      </div>
+      <div class="field-row">
+        <label for="search">Find a play</label>
+        <input type="text" id="search" placeholder="dive, sweep, cover 3&hellip;">
+      </div>
+    </div>
+    <div class="panel-bd scroll" id="play-list"></div>
+  </aside>
+
+  <!-- ============ CENTER: field ============ -->
+  <section class="stage">
+    <div class="panel stage-hd">
+      <div class="nmwrap">
+        <input type="text" id="play-name" value="Play" aria-label="Play name">
+        <div class="tags" id="play-tags"></div>
+      </div>
+      <div class="hdr-opts">
+        <label class="opt" for="field-style">Field
+          <select id="field-style"></select>
+        </label>
+        <label class="opt chk">
+          <input type="checkbox" id="chk-ghost"> Show opponent
+        </label>
+      </div>
+    </div>
+
+    <div class="hint" id="hint">
+      <span id="hint-text"></span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="hint-undo">Undo point</button>
+      <button class="btn sm primary" id="hint-done">Done</button>
+    </div>
+
+    <div class="field-wrap">
+      <svg id="field" xmlns="http://www.w3.org/2000/svg" viewBox="120 44 1360 1156" role="img" aria-label="Football play diagram"></svg>
+    </div>
+
+    <div class="panel toolbar">
+      <button class="btn primary" id="btn-animate">▶ Animate</button>
+      <button class="btn" id="btn-reset" style="background:#eef2f7">Reset play</button>
+      <button class="btn" id="btn-save" style="background:#eef2f7">Save to My Plays</button>
+      <button class="btn" id="btn-png" style="background:#eef2f7">Export PNG</button>
+      <button class="btn" id="btn-print" style="background:#eef2f7">Print / PDF</button>
+      <button class="btn danger" id="btn-delete">Delete</button>
+    </div>
+
+    <div class="panel legend" id="legend"></div>
+  </section>
+
+  <!-- ============ RIGHT: inspector ============ -->
+  <aside class="panel panel-right sidebar">
+    <div class="panel-hd"><h2>Player</h2></div>
+    <div class="panel-bd scroll" id="inspector"></div>
+  </aside>
+</main>
+
+<!-- ============ modals ============ -->
+<div class="modal" id="modal-new">
+  <div class="sheet">
+    <div class="sheet-hd"><h2>New play</h2><button class="x" data-close>&times;</button></div>
+    <div class="sheet-bd">
+      <div class="field-row" style="margin-top:0">
+        <label for="new-name">Play name</label>
+        <input type="text" id="new-name" placeholder="e.g. 24 Blast">
+      </div>
+      <div class="field-row">
+        <label>Side of the ball</label>
+        <div class="seg" id="new-side">
+          <button data-side="offense" aria-pressed="true">Offense</button>
+          <button data-side="defense" aria-pressed="false">Defense</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <label for="new-count">Players per side</label>
+        <div class="count-wrap">
+          <input type="range" id="new-count" min="5" max="11" step="1" value="11">
+          <span class="count-pill" id="new-count-pill">11 v 11</span>
+        </div>
+      </div>
+      <div class="field-row">
+        <label for="new-form">Starting formation</label>
+        <select id="new-form"></select>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:14px 0 0">
+        You&rsquo;ll get the formation on an empty field. Drag players where you want them, then tap a
+        player and give them an assignment &mdash; run, route, block, blitz, zone and so on.
+      </p>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn" style="background:#eef2f7" data-close>Cancel</button>
+      <button class="btn primary" id="new-create">Create play</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-roster">
+  <div class="sheet">
+    <div class="sheet-hd"><h2>Team roster</h2><button class="x" data-close>&times;</button></div>
+    <div class="sheet-bd">
+      <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px">
+        Add your players once. Then tap any spot on the field and assign a kid to it &mdash;
+        their number shows in the circle and their name underneath.
+      </p>
+      <div class="roster-row" style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">
+        <div>Number</div><div>Name</div><div></div>
+      </div>
+      <div id="roster-rows"></div>
+      <button class="btn sm" style="background:#eef2f7;margin-top:8px" id="roster-add">+ Add player</button>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-help">
+  <div class="sheet">
+    <div class="sheet-hd"><h2>How to use it</h2><button class="x" data-close>&times;</button></div>
+    <div class="sheet-bd help" id="help-body"></div>
+    <div class="sheet-ft"><button class="btn primary" data-close>Got it</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-print">
+  <div class="sheet" style="width:min(440px,100%)">
+    <div class="sheet-hd"><h2>Print or save as PDF</h2><button class="x" data-close>&times;</button></div>
+    <div class="sheet-bd">
+      <div class="field-row" style="margin-top:0">
+        <label>What to print</label>
+        <select id="print-what">
+          <option value="one">Just this play</option>
+          <option value="mine">All of My Plays</option>
+          <option value="side">Every play showing in the list right now</option>
+        </select>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:14px 0 0">
+        One play per page. In the print dialog choose <b>Save as PDF</b> as the destination to get a
+        file you can email or keep on your phone. The <b>Whiteboard</b> or <b>Lined paper</b> field
+        style uses far less ink.
+      </p>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn" style="background:#eef2f7" data-close>Cancel</button>
+      <button class="btn primary" id="print-go">Print</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-area" aria-hidden="true"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Coach's Playbook — youth football play designer
+   Single file, no dependencies. Everything lives in the browser.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------
+   1. FIELD GEOMETRY
+   All play data is authored in YARDS relative to the ball:
+     dx  -> negative = offense's left, positive = offense's right
+     dy  -> positive = downfield (the way the offense is going)
+   Those get baked into SVG units once, when a play is built.
+   --------------------------------------------------------------- */
+const U       = 30;          // svg units per yard
+const FIELD_W = 1600;        // 53.3 yd -- regulation width
+const FIELD_H = 1200;        // 40 yd of visible field
+const LOS_Y   = 780;         // line of scrimmage: 26 yd downfield, 14 yd of backfield
+const CX      = 800;         // ball is spotted in the middle
+const HASH    = 17.78;       // high-school hash marks, yards from each sideline
+
+// A play only ever lives in a window of the field, so that is all we draw:
+// 45 yards wide, from 10 yards behind the ball to 20 yards downfield. Keeping
+// the full field in the model means hash marks and yard lines stay honest.
+// Width is fixed, so every play is drawn at exactly the same scale and two
+// diagrams can be compared side by side. Only the height flexes, to the depth
+// the play actually uses -- a dive play doesn't waste half a page on empty grass.
+const VX = 120, VW = 1360;                       // fixed horizontal window
+let   VY = 300, VH = 750;                        // vertical window, fitted per play
+const PAD_TOP = 136, PAD_BOT = 120;              // title band above, legend below
+const TOP_LIMIT = 210, BOT_LIMIT = 1050;         // +19 to -9 yards: the deepest we ever go
+const MIN_TOP   = 540, MIN_BOT   = 960;          // always show +8 downfield and -6 back
+
+const fx = dx => CX + dx * U;
+const fy = dy => LOS_Y - dy * U;
+
+/* ---------------------------------------------------------------
+   2. ASSIGNMENT TYPES — how each kind of line is drawn
+   Conventions follow standard football diagramming:
+     solid line + arrow = a player running / carrying
+     line + cross bar   = a block
+     dashed             = a fake, motion, or the ball in the air
+     dashed + circle    = a zone drop (defender settles in an area)
+   --------------------------------------------------------------- */
+const TYPES = {
+  run:     { label:'Run (ball carrier)', color:'#12233d', w:7,  dash:null,     cap:'arrow',  side:'offense' },
+  route:   { label:'Pass route',         color:'#12233d', w:6,  dash:null,     cap:'arrow',  side:'offense' },
+  block:   { label:'Block',              color:'#12233d', w:6,  dash:null,     cap:'bar',    side:'offense' },
+  pull:    { label:'Pull / trap block',  color:'#2f6fb5', w:6,  dash:null,     cap:'bar',    side:'offense' },
+  fake:    { label:'Fake / decoy',       color:'#7b8aa0', w:5,  dash:'16 12',  cap:'arrow',  side:'offense' },
+  drop:    { label:'Quarterback drop',   color:'#4a5c73', w:5,  dash:null,     cap:'arrow',  side:'offense' },
+  motion:  { label:'Pre-snap motion',    color:'#e0902f', w:5,  dash:'4 12',   cap:'arrow',  side:'offense' },
+  handoff: { label:'Handoff / pitch',    color:'#12233d', w:5,  dash:'3 9',    cap:'arrow',  side:'offense' },
+  pass:    { label:'Ball in the air',    color:'#c47a12', w:5,  dash:'20 12',  cap:'arrow',  side:'both'    },
+  rush:    { label:'Rush the gap',       color:'#b3151f', w:7,  dash:null,     cap:'arrow',  side:'defense' },
+  blitz:   { label:'Blitz',              color:'#8d1018', w:9,  dash:null,     cap:'arrow',  side:'defense' },
+  man:     { label:'Man coverage',       color:'#b3151f', w:6,  dash:null,     cap:'arrow',  side:'defense' },
+  zone:    { label:'Zone drop',          color:'#b3151f', w:6,  dash:'16 11',  cap:'hook',   side:'defense' },
+  contain: { label:'Contain / force',    color:'#b3151f', w:6,  dash:null,     cap:'arrow',  side:'defense' }
+};
+
+/* ---------------------------------------------------------------
+   2b. FIELD STYLES
+   Same diagram, four different amounts of field underneath it.
+   "Whiteboard" is what you want on a printer or a clipboard;
+   "Grass" is what looks like a Saturday morning.
+   --------------------------------------------------------------- */
+const FIELD_STYLES = {
+  whiteboard:{
+    name:'Whiteboard', hint:'Nothing but the ball and the line. Cheapest to print, easiest to read.',
+    bg:'#ffffff', band:null, yard:null, hash:null, marks:false, arrow:false,
+    los:'#16202b', losOp:1, losW:5, text:'#7b8899', border:'#e4eaf1', borderW:2,
+    nameFill:'#16202b', halo:'#ffffff'
+  },
+  lined:{
+    name:'Lined paper', hint:'Faint five-yard lines for spacing, still prints clean.',
+    bg:'#ffffff', band:null, yard:'#c9d6e3', yardOp:1, hash:'#e0e8f0', marks:true, arrow:false,
+    los:'#16202b', losOp:1, losW:5, text:'#8b98a8', border:'#dde4ec', borderW:2,
+    nameFill:'#16202b', halo:'#ffffff'
+  },
+  chalk:{
+    name:'Chalkboard', hint:'Dark board, white chalk. Easy on the eyes on a phone at night.',
+    bg:'#1d2b33', band:'#22333c', yard:'#ffffff', yardOp:.3, hash:'#ffffff', marks:true, arrow:true,
+    los:'#ffffff', losOp:.95, losW:6, text:'#9fb4bf', border:'#33454f', borderW:3,
+    nameFill:'#ffffff', halo:'#101a20'
+  },
+  grass:{
+    name:'Grass field', hint:'Full turf with mown bands, hash marks and yard lines.',
+    bg:'#1f7a45', band:'#238a4e', yard:'#ffffff', yardOp:.62, hash:'#ffffff', marks:true, arrow:true,
+    los:'#ffffff', losOp:1, losW:7, text:'#ffffff', border:'#ffffff', borderW:6,
+    nameFill:'#ffffff', halo:'#0d2a1a'
+  }
+};
+const theme = () => FIELD_STYLES[store.fieldStyle] || FIELD_STYLES.grass;
+
+/* ---------------------------------------------------------------
+   3. OFFENSIVE FORMATIONS
+   How many linemen a team fields depends on the size of the game:
+     11 / 10 / 9 / 8  -> 5 linemen (C, both guards, both tackles)
+     7 / 6            -> 3 linemen (C and both guards)  [6-man & small-sided rules]
+     5                -> center only (flag-style)
+   Everyone left over is a quarterback plus "skill" spots. Each formation
+   lists its skill spots in priority order, so shrinking the team drops the
+   least important spot first and the formation still makes sense.
+   --------------------------------------------------------------- */
+const OL5 = [['LT',-4.4],['LG',-2.2],['C',0],['RG',2.2],['RT',4.4]];
+const OL3 = [['LG',-2.2],['C',0],['RG',2.2]];
+const OL1 = [['C',0]];
+const olFor = n => n >= 8 ? OL5 : n >= 6 ? OL3 : OL1;
+
+const OFF_FORMS = {
+  'i-form': {
+    name:'I-Formation', blurb:'Two backs stacked behind the quarterback. The bread and butter of youth football.',
+    qb:[0,-2],
+    skills:[ ['TB',0,-7], ['FB',0,-4.5], ['TE',6.6,-0.6], ['Z',14,-0.6], ['X',-14,-0.6] ]
+  },
+  'wing-t': {
+    name:'Wing-T', blurb:'Tight end with a wingback outside him. Built for misdirection — sweep, trap and bootleg all look the same.',
+    qb:[0,-2],
+    skills:[ ['FB',0,-4.4], ['HB',-3,-4.4], ['WB',8.4,-1.5], ['TE',6.6,-0.6], ['SE',-14,-0.6] ]
+  },
+  'spread': {
+    name:'Spread (Shotgun)', blurb:'Quarterback back five yards with receivers split wide. Spaces the defense out.',
+    qb:[0,-5],
+    skills:[ ['Z',15,-0.6], ['X',-15,-0.6], ['RB',2.6,-5], ['SR',8,-1.5], ['SL',-8,-1.5] ]
+  },
+  'trips': {
+    name:'Trips Right', blurb:'Three receivers bunched to one side. Outnumbers the defense on the edge.',
+    qb:[0,-5],
+    skills:[ ['Z',16,-0.6], ['H',12.2,-1.6], ['Y',8.6,-1.9], ['X',-15,-0.6], ['RB',-2.6,-5] ]
+  },
+  'pistol': {
+    name:'Pistol', blurb:'Short shotgun with the back straight behind. Keeps the run game balanced both ways.',
+    qb:[0,-4],
+    skills:[ ['RB',0,-7], ['TE',6.6,-0.6], ['Z',15,-0.6], ['X',-15,-0.6], ['SR',8,-1.5] ]
+  },
+  'single-wing': {
+    name:'Single Wing', blurb:'Direct snap to the tailback — no quarterback under center. Brutally effective with young teams.',
+    qb:null,
+    skills:[ ['TB',0,-4.5], ['BB',1.6,-2.1], ['FB',-2.6,-3.8], ['WB',8.4,-1.5], ['TE',6.6,-0.6], ['E',-14,-0.6] ]
+  },
+  'full-house': {
+    name:'Full House / Goal Line', blurb:'Three backs, tight ends both sides. Short yardage and goal line power.',
+    qb:[0,-2],
+    skills:[ ['FB',0,-4], ['LH',-2.8,-5.2], ['RH',2.8,-5.2], ['TE',6.6,-0.6], ['TY',-6.6,-0.6] ]
+  }
+};
+
+/* ---------------------------------------------------------------
+   4. DEFENSIVE FRONTS
+   Authored at full strength (11) with a drop order that peels players
+   off in a sensible sequence as the game gets smaller — deep help goes
+   first, then interior linemen, so you never end up with 6 linemen and
+   nobody covering anybody.
+   --------------------------------------------------------------- */
+const DEF_FORMS = {
+  '5-3': {
+    name:'5-3 Base', blurb:'Five down linemen, three linebackers. The classic youth defense — every gap is covered.',
+    pos:[ ['NG',0,1],['DT-L',-2.2,1],['DT-R',2.2,1],['DE-L',-4.4,1],['DE-R',4.4,1],
+          ['MLB',0,4.5],['LB-L',-5,4.3],['LB-R',5,4.3],
+          ['CB-L',-13,7],['CB-R',13,7],['FS',0,12] ],
+    drop:['FS','MLB','DT-L','DT-R','DE-L','LB-L']
+  },
+  '6-2': {
+    name:'6-2 Base', blurb:'Six on the line, two linebackers. Almost impossible to run inside on — the go-to against a wedge team.',
+    pos:[ ['DE-L',-5.2,1],['DT-L',-3,1],['NG-L',-1,1],['NG-R',1,1],['DT-R',3,1],['DE-R',5.2,1],
+          ['LB-L',-3.2,4.5],['LB-R',3.2,4.5],
+          ['CB-L',-13,7],['CB-R',13,7],['FS',0,12] ],
+    drop:['FS','DT-L','DT-R','NG-R','DE-L','LB-L']
+  },
+  '4-4': {
+    name:'4-4 Split', blurb:'Four down, four linebackers. Fast, aggressive, and great for blitzing.',
+    pos:[ ['DE-L',-4.6,1],['DT-L',-1.7,1],['DT-R',1.7,1],['DE-R',4.6,1],
+          ['ILB-L',-2.6,4.5],['ILB-R',2.6,4.5],['OLB-L',-7.6,4],['OLB-R',7.6,4],
+          ['CB-L',-14,7],['CB-R',14,7],['FS',0,12] ],
+    drop:['FS','OLB-L','OLB-R','DT-L','DT-R','ILB-L']
+  },
+  '4-3': {
+    name:'4-3', blurb:'Four linemen, three linebackers, four in the secondary. The standard high-school and pro front.',
+    pos:[ ['DE-L',-5,1],['DT-L',-1.8,1],['DT-R',1.8,1],['DE-R',5,1],
+          ['WLB',-5,4.4],['MLB',0,4.8],['SLB',5,4.4],
+          ['CB-L',-14,7],['CB-R',14,7],['SS',5.5,10.5],['FS',-4,12.5] ],
+    drop:['SS','WLB','SLB','DT-L','DT-R','MLB']
+  },
+  '3-4': {
+    name:'3-4', blurb:'Three linemen with four linebackers standing up. Hides where the pressure is coming from.',
+    pos:[ ['NG',0,1],['DE-L',-3.6,1],['DE-R',3.6,1],
+          ['ILB-L',-2.2,4.5],['ILB-R',2.2,4.5],['OLB-L',-7.2,3.5],['OLB-R',7.2,3.5],
+          ['CB-L',-14,7],['CB-R',14,7],['SS',5.5,10.5],['FS',-4,12.5] ],
+    drop:['SS','OLB-L','ILB-L','OLB-R','DE-L','ILB-R']
+  },
+  '5-2': {
+    name:'5-2 Monster', blurb:'Five down, two linebackers and a rover ("monster") who cheats to the strength.',
+    pos:[ ['NG',0,1],['DT-L',-2.2,1],['DT-R',2.2,1],['DE-L',-4.6,1],['DE-R',4.6,1],
+          ['LB-L',-2.6,4.5],['LB-R',2.6,4.5],
+          ['MON',7,7.5],['CB-L',-13,7],['CB-R',13,7],['FS',0,12] ],
+    drop:['FS','MON','DT-L','DT-R','DE-L','LB-L']
+  },
+  'goal-line': {
+    name:'Goal Line 6-5', blurb:'Everybody crowds the ball. Nothing gets in from a yard out.',
+    pos:[ ['DE-L',-6,0.8],['DT-L',-3.6,0.8],['NG-L',-1.2,0.8],['NG-R',1.2,0.8],['DT-R',3.6,0.8],['DE-R',6,0.8],
+          ['LB-L',-3.2,3.2],['MLB',0,3.4],['LB-R',3.2,3.2],
+          ['CB-L',-10,4.5],['CB-R',10,4.5] ],
+    drop:['MLB','DT-L','DT-R','NG-R','DE-L','LB-L']
+  }
+};
+
+/* ---------------------------------------------------------------
+   5. THE PLAY LIBRARY
+   Each assignment path is a list of waypoints in yards, measured from
+   that player's own starting spot — so a play drawn for 11 players still
+   works when you drop down to 8 and a couple of spots disappear.
+   --------------------------------------------------------------- */
+// every lineman does the same thing
+const olAll = (dx, dy, t) => {
+  const a = {};
+  ['LT','LG','C','RG','RT'].forEach(k => a[k] = { t: t || 'block', p:[[dx,dy]] });
+  return a;
+};
+// drive block toward one side (dir = 1 right, -1 left)
+const olDrive = dir => olAll(0.9 * dir, 1.1);
+// pass protection: short set, hold your ground
+const olPass  = () => olAll(0, 1.2);
+
+const PLAYS = [
+
+/* ============================ OFFENSE — RUNS ============================ */
+{
+  id:'wedge', name:'Wedge', form:'i-form', family:'Inside runs', min:5,
+  note:'The single most reliable play in peewee football. Linemen squeeze shoulder-to-shoulder on the center and push as one block. Nobody blocks a man — everybody blocks the pile. Back stays behind it until it stops moving, then bounces.',
+  assign:{
+    LT:{t:'block',p:[[1.9,0.9]]}, LG:{t:'block',p:[[0.95,1]]}, C:{t:'block',p:[[0,1.3]]},
+    RG:{t:'block',p:[[-0.95,1]]}, RT:{t:'block',p:[[-1.9,0.9]]},
+    QB:{t:'handoff',p:[[0,-1.3]]},
+    FB:{t:'block',p:[[-0.55,2.8],[-0.55,4.8]]},
+    TB:{t:'run',p:[[0.55,3],[0.55,6.5],[0.55,10.5]]},
+    TE:{t:'block',p:[[-0.9,1.1]]},
+    Z:{t:'block',p:[[-0.5,4.5]]}, X:{t:'block',p:[[0.5,4.5]]}
+  }
+},
+{
+  id:'dive-r', name:'34 Dive Right', form:'i-form', family:'Inside runs', min:5,
+  note:'Quickest hitter you have. Fullback is through the right A-gap before the linebackers can read it. Tailback fakes wide to hold the outside.',
+  assign:{
+    ...olDrive(1),
+    QB:{t:'handoff',p:[[0.7,-1]]},
+    FB:{t:'run',p:[[1.5,1.2],[2,5],[2,9.5]]},
+    TB:{t:'fake',p:[[-1.6,1.8],[-3.4,3.2]]},
+    TE:{t:'block',p:[[0.7,1.1]]},
+    Z:{t:'block',p:[[-0.5,4.5]]}, X:{t:'block',p:[[0.5,4.5]]}
+  }
+},
+{
+  id:'power-r', name:'26 Power Right', form:'i-form', family:'Inside runs', min:6,
+  note:'Down-block everything playside, backside guard pulls and leads up through the hole, fullback kicks out the end man. Tailback is patient — one cut, straight up.',
+  assign:{
+    LT:{t:'block',p:[[0.9,1]]}, LG:{t:'pull',p:[[1,-1],[5.6,-0.8],[7,1.6],[7.2,3.2]]},
+    C:{t:'block',p:[[0.9,1.1]]}, RG:{t:'block',p:[[0.9,1.1]]}, RT:{t:'block',p:[[0.9,1.1]]},
+    TE:{t:'block',p:[[0.8,1.1]]},
+    QB:{t:'handoff',p:[[0.9,-1]]},
+    FB:{t:'block',p:[[3,2.2],[5.8,3.6]]},
+    TB:{t:'run',p:[[1.2,1],[3,3],[3.3,6.5],[3.3,10.5]]},
+    Z:{t:'block',p:[[-0.5,5]]}, X:{t:'block',p:[[0.5,5]]}
+  }
+},
+{
+  id:'toss-r', name:'28 Toss Sweep Right', form:'i-form', family:'Outside runs', min:6,
+  note:'Get the ball outside fast. Quarterback opens and tosses, fullback kicks the end man out, backside guard pulls and turns up. Tailback: get width first, then get north.',
+  assign:{
+    LT:{t:'block',p:[[1.2,0.9]]}, LG:{t:'pull',p:[[1,-1.1],[6.6,-1],[9,0.6],[9.4,2.6]]},
+    C:{t:'block',p:[[1.2,0.9]]}, RG:{t:'block',p:[[1.2,0.9]]}, RT:{t:'block',p:[[1.2,0.9]]},
+    TE:{t:'block',p:[[1.2,1.4]]},
+    QB:{t:'handoff',p:[[1.6,-1.4],[3.2,-1.9]]},
+    FB:{t:'block',p:[[3.2,1.6],[6.2,2.6]]},
+    TB:{t:'run',p:[[3.4,0.2],[7.4,1.2],[9,4],[9,9]]},
+    Z:{t:'block',p:[[-0.6,5]]}, X:{t:'block',p:[[2,6]]}
+  }
+},
+{
+  id:'counter-l', name:'Counter Left', form:'i-form', family:'Misdirection', min:6,
+  note:'Everything shows right, ball goes left. Tailback takes one hard jab step to the right before crossing. Right guard and right tackle pull — guard kicks out, tackle wraps up inside.',
+  assign:{
+    LT:{t:'block',p:[[-0.9,1.1]]}, LG:{t:'block',p:[[-0.9,1.1]]}, C:{t:'block',p:[[-0.9,1.1]]},
+    RG:{t:'pull',p:[[-1,-1],[-5.6,-0.9],[-7,1.2],[-7.2,3]]},
+    RT:{t:'pull',p:[[-1,-1.7],[-6.6,-1.6],[-8.4,0.2],[-8.6,2.2]]},
+    TE:{t:'block',p:[[0.9,1.1]]},
+    QB:{t:'handoff',p:[[-0.9,-1]]},
+    FB:{t:'fake',p:[[2.2,1.4],[3.6,3]]},
+    TB:{t:'run',p:[[1.6,0.5],[-1,1.8],[-3.3,3.4],[-3.3,8],[-3.3,11]]},
+    Z:{t:'block',p:[[-0.5,5]]}, X:{t:'block',p:[[0.5,5]]}
+  }
+},
+{
+  id:'qb-sneak', name:'QB Sneak', form:'i-form', family:'Inside runs', min:5,
+  note:'Third and inches. Quarterback picks a side of the center, gets low and follows his hands. Snap it on a quick count — do not let the defense get set.',
+  assign:{
+    LT:{t:'block',p:[[1.3,1.1]]}, LG:{t:'block',p:[[0.7,1.2]]}, C:{t:'block',p:[[0,1.4]]},
+    RG:{t:'block',p:[[-0.7,1.2]]}, RT:{t:'block',p:[[-1.3,1.1]]},
+    QB:{t:'run',p:[[0.6,1],[0.6,3.2]]},
+    FB:{t:'block',p:[[0.4,2.4],[0.6,4.2]]},
+    TB:{t:'block',p:[[0.4,3],[0.6,5]]},
+    TE:{t:'block',p:[[-0.5,1.1]]},
+    Z:{t:'block',p:[[-0.5,4]]}, X:{t:'block',p:[[0.5,4]]}
+  }
+},
+{
+  id:'buck-sweep', name:'Buck Sweep Right', form:'wing-t', family:'Outside runs', min:7,
+  note:'The heart of the Wing-T. Both guards pull — playside guard kicks the end out, backside guard wraps around and leads up. Fullback fakes the dive right through the middle to freeze the linebackers.',
+  assign:{
+    LT:{t:'block',p:[[1,1]]},
+    LG:{t:'pull',p:[[1,-1],[6.4,-0.9],[8.2,1.2],[8.4,3]]},
+    C:{t:'block',p:[[-1,1.1]]},
+    RG:{t:'pull',p:[[1,-1.4],[5.4,-1.3],[6.8,0.6],[7,2.4]]},
+    RT:{t:'block',p:[[1,1.1]]},
+    TE:{t:'block',p:[[1.2,1.2]]},
+    QB:{t:'handoff',p:[[1.2,-1],[2.4,-1.4]]},
+    FB:{t:'fake',p:[[1.6,2.2],[2.6,4.2]]},
+    HB:{t:'run',p:[[2.2,0.6],[6.2,1.2],[8.4,3.4],[8.4,8.4]]},
+    WB:{t:'block',p:[[1.2,1.6],[2.4,3.2]]},
+    SE:{t:'block',p:[[1.2,6]]}
+  }
+},
+{
+  id:'trap-r', name:'Trap Right', form:'wing-t', family:'Misdirection', min:7,
+  note:'Let the defensive tackle come free, then blindside him. Playside linemen block down and away; backside guard pulls flat and traps the first man past the center. Fullback runs right off his tail.',
+  assign:{
+    LT:{t:'block',p:[[1,1]]},
+    LG:{t:'pull',p:[[1.2,-0.9],[4.2,-0.7],[5,0.9]]},
+    C:{t:'block',p:[[-0.9,1.1]]}, RG:{t:'block',p:[[-0.9,1.1]]}, RT:{t:'block',p:[[-0.6,1.2]]},
+    TE:{t:'block',p:[[0.4,2.4],[0.8,4.2]]},
+    QB:{t:'handoff',p:[[0.6,-1]]},
+    FB:{t:'run',p:[[1.2,1.2],[2,4.4],[2,8.4]]},
+    HB:{t:'fake',p:[[-2.2,1.4],[-4.2,2.8]]},
+    WB:{t:'block',p:[[0.2,2],[0.4,4]]},
+    SE:{t:'block',p:[[0.5,5]]}
+  }
+},
+{
+  id:'waggle', name:'Waggle Right (Play Action)', form:'wing-t', family:'Play action', min:7,
+  note:'Looks exactly like Buck Sweep going the other way. Fullback sells the dive, quarterback hides the ball and boots out right. Three levels to throw to: flat, seam and the deep crosser. If nobody is open, run it.',
+  assign:{
+    ...olAll(-0.9, 0.9),
+    QB:{t:'run',p:[[-1.2,-1],[1,-2],[5,-1.6],[7.5,-0.6]]},
+    FB:{t:'fake',p:[[-1.6,2],[-2.6,4]]},
+    HB:{t:'block',p:[[3,0.2],[6,-0.8]]},
+    WB:{t:'route',p:[[2,1],[6,1.8],[9.5,2.4]]},
+    TE:{t:'route',p:[[1,3],[2,8],[3,14]]},
+    SE:{t:'route',p:[[2,3.5],[9,6],[16,7]]}
+  },
+  ball:{from:'QB',p:[[10,3.6]]}
+},
+{
+  id:'jet-l', name:'Jet Sweep Left', form:'wing-t', family:'Outside runs', min:7,
+  note:'Wingback goes in motion before the snap and takes the ball at full speed. Timing is everything — snap it as he crosses the quarterback. Nothing beats speed in space at this age.',
+  assign:{
+    ...olAll(-1, 0.9),
+    QB:{t:'handoff',p:[[-1.2,-1]]},
+    FB:{t:'fake',p:[[1.6,2],[2.6,4]]},
+    HB:{t:'block',p:[[-3,1],[-6,2]]},
+    WB:[ {t:'motion',p:[[-7,0.4]]},
+          {t:'run',p:[[-7,0.4],[-11,1.6],[-13.5,4],[-13.5,9]]} ],
+    TE:{t:'block',p:[[-0.4,2.2],[-1.2,4]]},
+    SE:{t:'block',p:[[-0.5,5]]}
+  }
+},
+{
+  id:'inside-zone', name:'Inside Zone Right', form:'pistol', family:'Inside runs', min:5,
+  note:'Every lineman takes a lateral step right and blocks whoever shows up. Back aims at the outside hip of the guard and cuts off what he sees — bang, bend or bounce.',
+  assign:{
+    ...olAll(1.1, 0.9),
+    QB:{t:'handoff',p:[[0.6,-0.6]]},
+    RB:{t:'run',p:[[0.6,1.2],[1.6,3.4],[2.2,5.6],[2.2,10]]},
+    TE:{t:'block',p:[[1.1,0.9]]},
+    Z:{t:'block',p:[[-0.5,5]]}, X:{t:'block',p:[[0.5,5]]}, SR:{t:'block',p:[[0,4.5]]}
+  }
+},
+{
+  id:'zone-read', name:'Zone Read Right', form:'pistol', family:'Misdirection', min:5,
+  note:'Leave the backside end unblocked on purpose. Quarterback rides the mesh and watches him: if the end chases the back, pull it and run. If he stays home, give it. Teach the read slowly — it is worth it.',
+  assign:{
+    LT:{t:'block',p:[[0.2,0.5]]}, LG:{t:'block',p:[[1.1,0.9]]}, C:{t:'block',p:[[1.1,0.9]]},
+    RG:{t:'block',p:[[1.1,0.9]]}, RT:{t:'block',p:[[1.1,0.9]]},
+    QB:[ {t:'fake',p:[[0.6,0.6]]},
+         {t:'run',p:[[0.6,0.6],[-2,1.8],[-5,3.4],[-6,8]]} ],
+    RB:{t:'run',p:[[1.2,1.2],[2.6,3.4],[3,7.4]]},
+    TE:{t:'block',p:[[1.1,0.9]]},
+    Z:{t:'block',p:[[-0.5,5]]}, X:{t:'block',p:[[0.5,5]]}, SR:{t:'block',p:[[0,4.5]]}
+  }
+},
+{
+  id:'sw-power', name:'Single Wing Power Right', form:'single-wing', family:'Inside runs', min:6,
+  note:'Direct snap to the tailback — he is running before the defense knows the ball is live. Blocking back kicks the end out, fullback and wingback seal inside, backside guard pulls and leads.',
+  assign:{
+    LT:{t:'block',p:[[1,1]]}, LG:{t:'pull',p:[[1,-1],[5.8,-0.9],[7.2,1.2],[7.4,3]]},
+    C:{t:'block',p:[[0.9,1.1]]}, RG:{t:'block',p:[[0.9,1.1]]}, RT:{t:'block',p:[[0.9,1.1]]},
+    TE:{t:'block',p:[[-0.9,1.1]]},
+    TB:{t:'run',p:[[1.2,0.6],[3.2,2.4],[4.2,4.6],[4.2,9.6]]},
+    BB:{t:'block',p:[[3,1.2],[5.2,2.4]]},
+    FB:{t:'block',p:[[2.6,1.6],[4.6,3]]},
+    WB:{t:'block',p:[[0.4,1.6],[1.2,3.4]]},
+    E:{t:'block',p:[[1,5]]}
+  }
+},
+{
+  id:'gl-blast', name:'Goal Line Blast', form:'full-house', family:'Inside runs', min:7,
+  note:'Two yards to go. Double team the nose, both halfbacks lead, fullback follows them in. Low pads win. Everybody finishes.',
+  assign:{
+    LT:{t:'block',p:[[1,1.2]]}, LG:{t:'block',p:[[0.7,1.3]]}, C:{t:'block',p:[[0.4,1.4]]},
+    RG:{t:'block',p:[[-0.7,1.3]]}, RT:{t:'block',p:[[-1,1.2]]},
+    QB:{t:'handoff',p:[[0.5,-1]]},
+    RH:{t:'block',p:[[-1.4,2.6],[-1.6,4.4]]},
+    LH:{t:'block',p:[[1.4,2.6],[1.6,4.4]]},
+    FB:{t:'run',p:[[0.6,2.4],[0.8,5],[0.8,8]]},
+    TE:{t:'block',p:[[-0.7,1.2]]}, TY:{t:'block',p:[[0.7,1.2]]}
+  }
+},
+
+/* ============================ OFFENSE — PASSES ============================ */
+{
+  id:'all-slants', name:'All Slants', form:'spread', family:'Quick passes', min:5,
+  note:'Three-step, ball out fast. Everybody takes three hard steps upfield then breaks flat inside. Great against a defense that presses your receivers or brings pressure.',
+  assign:{
+    ...olPass(),
+    Z:{t:'route',p:[[-2,1.2],[-6,5.2]]},
+    X:{t:'route',p:[[2,1.2],[6,5.2]]},
+    SR:{t:'route',p:[[-2,1.2],[-6,5.2]]},
+    SL:{t:'route',p:[[2,1.2],[6,5.2]]},
+    RB:{t:'route',p:[[3.4,0.2],[6.4,0.6]]}
+  },
+  ball:{from:'QB',p:[[-8,5.4]]}
+},
+{
+  id:'four-verts', name:'Four Verticals', form:'spread', family:'Downfield passes', min:6,
+  note:'Everybody runs straight down the field, spaced about ten yards apart. Somebody is always one-on-one. Quarterback takes his drop, finds the safety, throws away from him.',
+  assign:{
+    ...olPass(),
+    X:{t:'route',p:[[0,6],[0.8,16]]},
+    Z:{t:'route',p:[[0,6],[-0.8,16]]},
+    SL:{t:'route',p:[[-2,5],[-3,16]]},
+    SR:{t:'route',p:[[2,5],[3,16]]},
+    RB:{t:'block',p:[[0.8,0.8]]}
+  }
+},
+{
+  id:'curl-flat', name:'Curl / Flat Right', form:'spread', family:'Downfield passes', min:7,
+  note:'High-low on the flat defender. Outside receiver runs to ten and comes back; slot runs straight to the sideline. If the defender jumps the flat, throw the curl. If he drops, dump the flat.',
+  assign:{
+    ...olPass(),
+    Z:{t:'route',p:[[0,10],[0.8,8.4]]},
+    SR:{t:'route',p:[[3,1],[7.5,1.6]]},
+    X:{t:'route',p:[[1.5,2],[5,7]]},
+    SL:{t:'route',p:[[0,8],[-1.2,6.6]]},
+    RB:{t:'block',p:[[1,0.6]]}
+  },
+  ball:{from:'QB',p:[[14,10.5]]}
+},
+{
+  id:'smash', name:'Smash Right', form:'spread', family:'Downfield passes', min:7,
+  note:'Beats a two-deep corner every time. Outside receiver hitches at five, slot runs the corner behind him. The corner cannot cover both — throw off what he does.',
+  assign:{
+    ...olPass(),
+    Z:{t:'route',p:[[0,5.5],[0.8,4.6]]},
+    SR:{t:'route',p:[[1,4.5],[6.5,12.5]]},
+    X:{t:'route',p:[[0,13]]},
+    SL:{t:'route',p:[[0,6],[-4.5,10.5]]},
+    RB:{t:'block',p:[[1,0.6]]}
+  },
+  ball:{from:'QB',p:[[15,13]]}
+},
+{
+  id:'stick', name:'Stick Right', form:'trips', family:'Quick passes', min:7,
+  note:'Three-man triangle to one side. Outside man clears out deep, inside man sticks at six and turns out, middle man runs the flat. Read the flat defender and throw to whoever he leaves.',
+  assign:{
+    ...olPass(),
+    Z:{t:'route',p:[[0,13]]},
+    H:{t:'route',p:[[3,1],[7,1.6]]},
+    Y:{t:'route',p:[[0,5.4],[1.8,5.8]]},
+    X:{t:'route',p:[[2,1.2],[6,5.2]]},
+    RB:{t:'block',p:[[-1,0.6]]}
+  },
+  ball:{from:'QB',p:[[9,5.6]]}
+},
+{
+  id:'bubble', name:'Bubble Screen Right', form:'trips', family:'Screens', min:7,
+  note:'Free yards when the defense refuses to cover your trips side. Inside man drifts back and out, the two outside receivers block the nearest defenders. Throw it flat and let him run.',
+  assign:{
+    ...olAll(0, 1.2),
+    Z:{t:'block',p:[[0.4,2],[1.2,4]]},
+    H:{t:'block',p:[[1.4,1.2],[3.2,3]]},
+    Y:{t:'route',p:[[2,-1.2],[5.5,-0.6],[9,1.4],[9,5]]},
+    X:{t:'route',p:[[1.5,2],[4.5,5]]},
+    RB:{t:'block',p:[[-1,0.6]]}
+  },
+  ball:{from:'QB',p:[[8,-1]]}
+},
+{
+  id:'rb-screen', name:'Running Back Screen Right', form:'spread', family:'Screens', min:7,
+  note:'Punishes a heavy blitz. Line lets the rush come, then center, right guard and right tackle release outside to lead. Back slips out behind them. Quarterback retreats to sell it, then throws it soft.',
+  assign:{
+    LT:{t:'block',p:[[0,0.5]]}, LG:{t:'block',p:[[0,0.5]]},
+    C:{t:'block',p:[[2.4,-0.5],[5.4,0.6]]},
+    RG:{t:'block',p:[[3,-0.6],[6.4,0.4]]},
+    RT:{t:'block',p:[[2.4,-0.8],[6,-0.2]]},
+    QB:{t:'drop',p:[[0,-2.6],[1,-3.2]]},
+    RB:{t:'route',p:[[1.4,0.6],[3.4,-1],[6.4,-1.4],[8.5,0.4]]},
+    Z:{t:'block',p:[[-0.5,4.5]]}, X:{t:'block',p:[[0.5,4.5]]},
+    SR:{t:'block',p:[[0,4]]}, SL:{t:'block',p:[[0,4]]}
+  },
+  ball:{from:'QB',p:[[7.5,-1.6]]}
+},
+{
+  id:'sprint-r', name:'Sprint Out Right', form:'spread', family:'Downfield passes', min:7,
+  note:'Cuts the field in half so a young quarterback only has to read one side. Get outside the tackle, keep your shoulders square, throw on the run — or tuck it and take what is there.',
+  assign:{
+    ...olAll(1, 0.7),
+    QB:{t:'run',p:[[2,-1],[6,-1.6],[8.5,-0.6]]},
+    Z:{t:'route',p:[[0,8.5],[3,9]]},
+    SR:{t:'route',p:[[2,3],[7.5,4]]},
+    X:{t:'route',p:[[0,14]]},
+    SL:{t:'route',p:[[3,4],[10.5,6.5]]},
+    RB:{t:'block',p:[[3,-0.6],[6,-1.2]]}
+  }
+},
+{
+  id:'pa-post', name:'Play Action Post', form:'i-form', family:'Play action', min:9,
+  note:'Run the dive fake hard — the linebackers have to bite. Tight end down the seam holds the safety, backside receiver runs the post behind him. One shot, take it early in the game.',
+  assign:{
+    ...olAll(0.5, 0.9),
+    QB:{t:'drop',p:[[0,-1],[-1,-2.6],[-1.6,-3.6]]},
+    FB:{t:'block',p:[[1.4,1.6],[2.6,2.6]]},
+    TB:{t:'fake',p:[[0.6,2],[2,3.4]]},
+    TE:{t:'route',p:[[1,3],[2,9],[2.4,14]]},
+    X:{t:'route',p:[[0,10],[4.5,16]]},
+    Z:{t:'route',p:[[0,5.5],[4,5]]}
+  },
+  ball:{from:'QB',p:[[-9,17]]}
+},
+
+/* ============================ DEFENSE ============================ */
+{
+  id:'d-53-c3', name:'5-3 Cover 3', form:'5-3', side:'defense', family:'Base fronts', min:5,
+  note:'Every gap along the line is accounted for, three linebackers read and fill, and three defenders split the deep field into thirds. Nothing gets behind you. Start here.',
+  assign:{
+    NG:{t:'rush',p:[[0,-3]]},
+    'DT-L':{t:'rush',p:[[-0.8,-3]]}, 'DT-R':{t:'rush',p:[[0.8,-3]]},
+    'DE-L':{t:'rush',p:[[-1.6,-3]]}, 'DE-R':{t:'rush',p:[[1.6,-3]]},
+    MLB:{t:'zone',p:[[0,4]]},
+    'LB-L':{t:'zone',p:[[-3,3.4]]}, 'LB-R':{t:'zone',p:[[3,3.4]]},
+    'CB-L':{t:'zone',p:[[-1,8]]}, 'CB-R':{t:'zone',p:[[1,8]]},
+    FS:{t:'zone',p:[[0,6]]}
+  }
+},
+{
+  id:'d-53-fit', name:'5-3 Run Fits', form:'5-3', side:'defense', family:'Base fronts', min:5,
+  note:'Same front, everybody attacking. Linemen get penetration into their gap, linebackers scrape downhill and fill, corners squeeze from the outside in so nothing bounces. This is your answer to a wedge or sweep team.',
+  assign:{
+    NG:{t:'rush',p:[[0,-3]]},
+    'DT-L':{t:'rush',p:[[-0.8,-3]]}, 'DT-R':{t:'rush',p:[[0.8,-3]]},
+    'DE-L':{t:'rush',p:[[-1.4,-3.2]]}, 'DE-R':{t:'rush',p:[[1.4,-3.2]]},
+    MLB:{t:'rush',p:[[0,-3.4]]},
+    'LB-L':{t:'rush',p:[[-1.6,-3.4]]}, 'LB-R':{t:'rush',p:[[1.6,-3.4]]},
+    'CB-L':{t:'contain',p:[[2.5,-4],[3.5,-6]]}, 'CB-R':{t:'contain',p:[[-2.5,-4],[-3.5,-6]]},
+    FS:{t:'rush',p:[[0,-5]]}
+  }
+},
+{
+  id:'d-62', name:'6-2 Gap Control', form:'6-2', side:'defense', family:'Base fronts', min:5,
+  note:'Six linemen means every interior gap has a body in it before the ball is snapped. Against a team that only runs inside, this ends the game. Two linebackers scrape to the ball, corners keep everything inside.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-1.4,-3]]}, 'DT-L':{t:'rush',p:[[-0.6,-3]]},
+    'NG-L':{t:'rush',p:[[-0.3,-3]]}, 'NG-R':{t:'rush',p:[[0.3,-3]]},
+    'DT-R':{t:'rush',p:[[0.6,-3]]}, 'DE-R':{t:'rush',p:[[1.4,-3]]},
+    'LB-L':{t:'rush',p:[[-3,-2.6],[-6,-3.2]]}, 'LB-R':{t:'rush',p:[[3,-2.6],[6,-3.2]]},
+    'CB-L':{t:'contain',p:[[2,-4],[3,-6]]}, 'CB-R':{t:'contain',p:[[-2,-4],[-3,-6]]},
+    FS:{t:'zone',p:[[0,5]]}
+  }
+},
+{
+  id:'d-44-c3', name:'4-4 Cover 3', form:'4-4', side:'defense', family:'Base fronts', min:5,
+  note:'Four rushers, four linebackers flowing to the ball, three deep behind. Balanced against run and pass and easy for kids to learn: inside backers take the hooks, outside backers take the flats.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-1.6,-3]]}, 'DT-L':{t:'rush',p:[[-0.6,-3]]},
+    'DT-R':{t:'rush',p:[[0.6,-3]]}, 'DE-R':{t:'rush',p:[[1.6,-3]]},
+    'ILB-L':{t:'zone',p:[[-1.2,3.2]]}, 'ILB-R':{t:'zone',p:[[1.2,3.2]]},
+    'OLB-L':{t:'zone',p:[[-3.4,1.6]]}, 'OLB-R':{t:'zone',p:[[3.4,1.6]]},
+    'CB-L':{t:'zone',p:[[-1,8]]}, 'CB-R':{t:'zone',p:[[1,8]]},
+    FS:{t:'zone',p:[[0,5]]}
+  }
+},
+{
+  id:'d-44-blitz', name:'4-4 Double A Blitz', form:'4-4', side:'defense', family:'Pressure', min:6,
+  note:'Both inside linebackers fire through the gaps either side of the center. Nothing behind it but man coverage, so use it on an obvious passing down — or the snap after they hurt you inside.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-1.8,-3]]}, 'DT-L':{t:'rush',p:[[-1.4,-3]]},
+    'DT-R':{t:'rush',p:[[1.4,-3]]}, 'DE-R':{t:'rush',p:[[1.8,-3]]},
+    'ILB-L':{t:'blitz',p:[[1.6,-3.5],[1.6,-5.5]]}, 'ILB-R':{t:'blitz',p:[[-1.6,-3.5],[-1.6,-5.5]]},
+    'OLB-L':{t:'man',p:[[-1,-2.5]]}, 'OLB-R':{t:'man',p:[[1,-2.5]]},
+    'CB-L':{t:'man',p:[[1.2,-3]]}, 'CB-R':{t:'man',p:[[-1.2,-3]]},
+    FS:{t:'man',p:[[0,-4]]}
+  }
+},
+{
+  id:'d-43-c2', name:'4-3 Cover 2', form:'4-3', side:'defense', family:'Coverages', min:8,
+  note:'Corners jam the outside receivers and sit in the flat; two safeties split the deep half of the field. Strong against short passes and outside runs, soft down the middle — the linebacker has to run.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-1.6,-3]]}, 'DT-L':{t:'rush',p:[[-0.6,-3]]},
+    'DT-R':{t:'rush',p:[[0.6,-3]]}, 'DE-R':{t:'rush',p:[[1.6,-3]]},
+    WLB:{t:'zone',p:[[-2.6,3]]}, MLB:{t:'zone',p:[[0,5.5]]}, SLB:{t:'zone',p:[[2.6,3]]},
+    'CB-L':{t:'zone',p:[[-2.4,-2.4]]}, 'CB-R':{t:'zone',p:[[2.4,-2.4]]},
+    FS:{t:'zone',p:[[-3,5]]}, SS:{t:'zone',p:[[3,6.5]]}
+  }
+},
+{
+  id:'d-43-man', name:'4-3 Cover 1 Man', form:'4-3', side:'defense', family:'Coverages', min:7,
+  note:'Everybody has a man, one safety plays centerfield to clean up. Tell each defender who they have before the snap and make them travel with motion.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-1.6,-3]]}, 'DT-L':{t:'rush',p:[[-0.6,-3]]},
+    'DT-R':{t:'rush',p:[[0.6,-3]]}, 'DE-R':{t:'rush',p:[[1.6,-3]]},
+    WLB:{t:'man',p:[[-2.4,-2.6]]}, MLB:{t:'man',p:[[0,-3]]}, SLB:{t:'man',p:[[2.4,-2.6]]},
+    'CB-L':{t:'man',p:[[1.4,-3.2]]}, 'CB-R':{t:'man',p:[[-1.4,-3.2]]},
+    SS:{t:'man',p:[[-1.4,-4]]},
+    FS:{t:'zone',p:[[0,5]]}
+  }
+},
+{
+  id:'d-34-c3', name:'3-4 Cover 3', form:'3-4', side:'defense', family:'Base fronts', min:7,
+  note:'Three big bodies occupy blockers so the four linebackers can run free. The offense cannot tell which outside backer is coming until the ball is snapped.',
+  assign:{
+    NG:{t:'rush',p:[[0,-3]]},
+    'DE-L':{t:'rush',p:[[-1,-3]]}, 'DE-R':{t:'rush',p:[[1,-3]]},
+    'ILB-L':{t:'zone',p:[[-1.4,3.2]]}, 'ILB-R':{t:'zone',p:[[1.4,3.2]]},
+    'OLB-L':{t:'rush',p:[[-1.6,-3.6]]}, 'OLB-R':{t:'zone',p:[[2.6,2]]},
+    'CB-L':{t:'zone',p:[[-1,8]]}, 'CB-R':{t:'zone',p:[[1,8]]},
+    FS:{t:'zone',p:[[-1,5]]}, SS:{t:'zone',p:[[2,3.5]]}
+  }
+},
+{
+  id:'d-52-mon', name:'5-2 Monster Cover 1', form:'5-2', side:'defense', family:'Coverages', min:7,
+  note:'Five down linemen with a rover — the "monster" — who lines up wherever the offense is strongest. Corners in man, free safety over the top. Move the monster every snap and make them find him.',
+  assign:{
+    NG:{t:'rush',p:[[0,-3]]},
+    'DT-L':{t:'rush',p:[[-0.8,-3]]}, 'DT-R':{t:'rush',p:[[0.8,-3]]},
+    'DE-L':{t:'rush',p:[[-1.6,-3]]}, 'DE-R':{t:'rush',p:[[1.6,-3]]},
+    'LB-L':{t:'man',p:[[-1.6,-2.6]]}, 'LB-R':{t:'man',p:[[1.6,-2.6]]},
+    MON:{t:'contain',p:[[2,-3.5],[2.6,-5.5]]},
+    'CB-L':{t:'man',p:[[1.2,-3]]}, 'CB-R':{t:'man',p:[[-1.2,-3]]},
+    FS:{t:'zone',p:[[0,5]]}
+  }
+},
+{
+  id:'d-cb-blitz', name:'Corner Blitz Cover 0', form:'4-4', side:'defense', family:'Pressure', min:8,
+  note:'Corner comes off the edge unblocked — the back almost never sees him. No safety help, so every other defender is locked in man. Best saved for a passing down, or right after a timeout.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-1.8,-3]]}, 'DT-L':{t:'rush',p:[[-0.6,-3]]},
+    'DT-R':{t:'rush',p:[[0.6,-3]]}, 'DE-R':{t:'rush',p:[[1.4,-3]]},
+    'CB-R':{t:'blitz',p:[[-3.5,-4],[-5.5,-7]]},
+    'OLB-R':{t:'man',p:[[1,-2.6]]}, 'OLB-L':{t:'man',p:[[-1,-2.6]]},
+    'ILB-R':{t:'man',p:[[0.8,-3]]}, 'ILB-L':{t:'man',p:[[-0.8,-3]]},
+    'CB-L':{t:'man',p:[[1.2,-3]]},
+    FS:{t:'man',p:[[3,-3.5]]}
+  }
+},
+{
+  id:'d-goal', name:'Goal Line 6-5 Gap', form:'goal-line', side:'defense', family:'Pressure', min:7,
+  note:'They need one yard. Six linemen shoot their gap low and hard, linebackers fill the cracks over the top, corners take away the fade and the sweep. Get under their pads and stand them up.',
+  assign:{
+    'DE-L':{t:'rush',p:[[-0.8,-2.6]]}, 'DT-L':{t:'rush',p:[[-0.4,-2.6]]},
+    'NG-L':{t:'rush',p:[[-0.2,-2.6]]}, 'NG-R':{t:'rush',p:[[0.2,-2.6]]},
+    'DT-R':{t:'rush',p:[[0.4,-2.6]]}, 'DE-R':{t:'rush',p:[[0.8,-2.6]]},
+    'LB-L':{t:'rush',p:[[-0.6,-3]]}, MLB:{t:'rush',p:[[0,-3.2]]}, 'LB-R':{t:'rush',p:[[0.6,-3]]},
+    'CB-L':{t:'contain',p:[[1.6,-2.6],[2.4,-4.4]]}, 'CB-R':{t:'contain',p:[[-1.6,-2.6],[-2.4,-4.4]]}
+  }
+}
+];
+
+/* ---------------------------------------------------------------
+   6. BUILDING A PLAY
+   Turns a library entry + a player count into concrete positions
+   and paths in SVG space. Custom plays are stored in exactly this
+   shape, so everything downstream treats them identically.
+   --------------------------------------------------------------- */
+const OL_ORDER = ['LT','LG','C','RG','RT'];
+const uid = () => 'p' + Math.random().toString(36).slice(2, 9);
+
+function roleOf(side, key){
+  if (side === 'offense') return OL_ORDER.includes(key) ? 'ol' : (key === 'QB' ? 'qb' : 'skill');
+  if (/^(NG|DT|DE)/.test(key)) return 'dl';
+  if (/LB|MON/.test(key))      return 'lb';
+  return 'db';
+}
+
+/** Lay out one side of the ball for a given player count. */
+function buildLineup(side, formKey, n){
+  const out = [];
+  if (side === 'offense'){
+    const f  = OFF_FORMS[formKey] || OFF_FORMS['i-form'];
+    const ol = olFor(n);
+    ol.forEach(([k, dx]) => out.push({ key:k, x:fx(dx), y:fy(-0.6) }));
+    let left = n - ol.length;
+    if (f.qb && left > 0){ out.push({ key:'QB', x:fx(f.qb[0]), y:fy(f.qb[1]) }); left--; }
+    f.skills.slice(0, Math.max(0, left)).forEach(([k, dx, dy]) =>
+      out.push({ key:k, x:fx(dx), y:fy(dy) }));
+  } else {
+    const f = DEF_FORMS[formKey] || DEF_FORMS['5-3'];
+    // the offense in front of us is narrower when the game is smaller,
+    // so pull the front seven in to stay lined up over real blockers
+    const squeeze = n >= 8 ? 1.35 : n >= 6 ? 1 : 0.7;
+    const dropped = new Set(f.drop.slice(0, Math.max(0, f.pos.length - n)));
+    f.pos.filter(([k]) => !dropped.has(k)).slice(0, n).forEach(([k, dx, dy]) => {
+      const sx = Math.abs(dx) < 9 ? dx * squeeze : dx;
+      out.push({ key:k, x:fx(sx), y:fy(dy) });
+    });
+  }
+  return out.map(p => ({
+    id:uid(), key:p.key, label:p.key, x:p.x, y:p.y,
+    side, role:roleOf(side, p.key), jersey:null, asg:[]
+  }));
+}
+
+/** Materialise a library play at the requested size. */
+function buildPlay(def, n){
+  const side    = def.side || 'offense';
+  const players = buildLineup(side, def.form, n);
+  const byKey   = Object.fromEntries(players.map(p => [p.key, p]));
+
+  Object.entries(def.assign || {}).forEach(([key, spec]) => {
+    const pl = byKey[key];
+    if (!pl) return;                       // that spot doesn't exist at this size
+    (Array.isArray(spec) ? spec : [spec]).forEach(a => {
+      pl.asg.push({ t:a.t, pts:a.p.map(([dx, dy]) => ({ x:pl.x + dx * U, y:pl.y - dy * U })) });
+    });
+  });
+
+  let ball = null;
+  if (def.ball && byKey[def.ball.from]){
+    const src = byKey[def.ball.from];
+    ball = { from:src.id, pts:def.ball.p.map(([dx, dy]) => ({ x:src.x + dx * U, y:src.y - dy * U })) };
+  }
+
+  return {
+    id:def.id, name:def.name, side, n, form:def.form,
+    family:def.family, note:def.note || '', players, ball, custom:false
+  };
+}
+
+/** A blank play in a chosen formation, ready to draw on. */
+function blankPlay(name, side, n, formKey){
+  const forms = side === 'offense' ? OFF_FORMS : DEF_FORMS;
+  return {
+    id:'custom-' + Date.now().toString(36), name, side, n, form:formKey,
+    family:'My plays', note:'', players:buildLineup(side, formKey, n),
+    ball:null, custom:true
+  };
+}
+
+/* ---------------------------------------------------------------
+   7. SVG DRAWING
+   --------------------------------------------------------------- */
+const NS = 'http://www.w3.org/2000/svg';
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const R = 28;                       // player marker radius
+const svg = document.getElementById('field');
+
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+  (parent || svg).appendChild(e);
+  return e;
+}
+const layer = id => { const g = document.createElementNS(NS,'g'); g.setAttribute('id', id); svg.appendChild(g); return g; };
+
+let L = {};
+function initLayers(){
+  svg.textContent = '';
+  L = { turf:layer('l-turf'), ghost:layer('l-ghost'), path:layer('l-path'),
+        ball:layer('l-ball'), player:layer('l-player'), handle:layer('l-handle'),
+        chrome:layer('l-chrome') };
+}
+
+/* ---- the field itself, drawn in whichever style is selected ---- */
+function drawTurf(){
+  const g = L.turf; g.textContent = '';
+  const T = theme();
+  const X2 = VX + VW, Y2 = VY + VH;
+
+  el('rect',{ x:VX, y:VY-PAD_TOP, width:VW, height:VH+PAD_TOP+PAD_BOT, fill:'#ffffff' }, g);
+  el('rect',{ x:VX, y:VY, width:VW, height:VH, fill:T.bg }, g);
+
+  // alternating five-yard bands, mown into the grass
+  if (T.band) for (let yd = -10; yd < 20; yd += 10){
+    const top = Math.max(VY, fy(yd + 5)), bot = Math.min(Y2, fy(yd));
+    if (bot > top) el('rect',{ x:VX, y:top, width:VW, height:bot-top, fill:T.band }, g);
+  }
+
+  for (let yd = -9; yd <= 19; yd++){
+    const y = fy(yd);
+    if (y < VY || y > Y2 || yd === 0) continue;
+    if (yd % 5 === 0){
+      if (T.yard) el('line',{ x1:VX, y1:y, x2:X2, y2:y, stroke:T.yard,
+                              'stroke-width':3, 'stroke-opacity':T.yardOp }, g);
+    } else if (T.hash){
+      [HASH, 53.33 - HASH].forEach(hx =>
+        el('line',{ x1:hx*U-10, y1:y, x2:hx*U+10, y2:y, stroke:T.hash,
+                    'stroke-width':3.5, 'stroke-opacity':T.yardOp != null ? T.yardOp*0.8 : 1 }, g));
+      el('line',{ x1:VX+8,  y1:y, x2:VX+30, y2:y, stroke:T.hash,'stroke-width':3.5,
+                  'stroke-opacity':T.yardOp != null ? T.yardOp*0.8 : 1 }, g);
+      el('line',{ x1:X2-30, y1:y, x2:X2-8,  y2:y, stroke:T.hash,'stroke-width':3.5,
+                  'stroke-opacity':T.yardOp != null ? T.yardOp*0.8 : 1 }, g);
+    }
+  }
+
+  // how far downfield you are, off the line of scrimmage
+  if (T.marks) [5,10,15,-5].forEach(d =>
+    el('text',{ x:VX+38, y:fy(d)-10, fill:T.text,'fill-opacity':.75,'font-size':24,
+                'font-family':FONT,'font-weight':800 }, g).textContent = (d>0?'+':'') + d);
+
+  // the line of scrimmage
+  el('line',{ x1:VX, y1:LOS_Y, x2:X2, y2:LOS_Y, stroke:T.los,
+              'stroke-width':T.losW, 'stroke-opacity':T.losOp }, g);
+  el('text',{ x:VX+16, y:LOS_Y-21, fill:T.text,'fill-opacity':.9,'font-size':21,
+              'font-family':FONT,'font-weight':800,'letter-spacing':'1.5' }, g).textContent = 'LOS';
+
+  el('rect',{ x:VX, y:VY, width:VW, height:VH, fill:'none',
+              stroke:T.border, 'stroke-width':T.borderW }, g);
+}
+
+/* ---- geometry helpers ---- */
+const len  = (a,b) => Math.hypot(b.x-a.x, b.y-a.y);
+function shorten(from, to, by){        // pull `to` back along the segment
+  const d = len(from,to); if (d <= by || d === 0) return { ...to };
+  const k = (d - by) / d;
+  return { x:from.x + (to.x-from.x)*k, y:from.y + (to.y-from.y)*k };
+}
+function polyLen(pts){ let s = 0; for (let i=1;i<pts.length;i++) s += len(pts[i-1],pts[i]); return s; }
+function pointAt(pts, frac){           // walk a polyline to a fraction of its length
+  const total = polyLen(pts);
+  if (total === 0) return { ...pts[0] };
+  let want = Math.max(0, Math.min(1, frac)) * total;
+  for (let i=1;i<pts.length;i++){
+    const seg = len(pts[i-1], pts[i]);
+    if (want <= seg || i === pts.length-1){
+      const k = seg === 0 ? 0 : want/seg;
+      return { x:pts[i-1].x + (pts[i].x-pts[i-1].x)*k, y:pts[i-1].y + (pts[i].y-pts[i-1].y)*k };
+    }
+    want -= seg;
+  }
+  return { ...pts[pts.length-1] };
+}
+
+/** Draw one assignment line, with the right cap for its type. */
+function drawLine(g, startPt, pts, type, opts){
+  const T = TYPES[type] || TYPES.run;
+  const o = opts || {};
+  const all = [startPt, ...pts].filter((p,i,a) => i===0 || len(a[i-1],p) > 1);
+  if (all.length < 2) return;
+
+  const capLen = T.cap === 'arrow' ? 24 : T.cap === 'hook' ? 15 : 0;
+  const draw   = all.map(p => ({ ...p }));
+  draw[0]      = shorten(draw[1], draw[0], R + 3);
+  const lastI  = draw.length - 1;
+  if (capLen) draw[lastI] = shorten(draw[lastI-1], draw[lastI], capLen);
+
+  // a short block mark would otherwise disappear under the player marker
+  const MINV = 32;
+  if (polyLen(draw) < MINV){
+    const a = draw[lastI-1], b = draw[lastI];
+    const d = len(a, b) || 1, need = MINV - polyLen(draw);
+    draw[lastI] = { x:b.x + (b.x-a.x)/d*need, y:b.y + (b.y-a.y)/d*need };
+    all[all.length-1] = { x:draw[lastI].x + (b.x-a.x)/d*capLen, y:draw[lastI].y + (b.y-a.y)/d*capLen };
+  }
+
+  el('polyline',{
+    points: draw.map(p => p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),
+    fill:'none', stroke:T.color, 'stroke-width':T.w,
+    'stroke-linecap':'round', 'stroke-linejoin':'round',
+    'stroke-dasharray':T.dash, opacity:o.dim ? .3 : 1
+  }, g);
+
+  const tip = all[all.length-1], prev = draw[lastI-1] || all[0];
+  const ang = Math.atan2(tip.y-prev.y, tip.x-prev.x);
+  if (T.cap === 'arrow'){
+    const w = T.w * 1.9 + 4, l = capLen + 6;
+    const p1 = { x:tip.x - Math.cos(ang)*l - Math.sin(ang)*-w, y:tip.y - Math.sin(ang)*l - Math.cos(ang)*w };
+    const p2 = { x:tip.x - Math.cos(ang)*l + Math.sin(ang)*-w, y:tip.y - Math.sin(ang)*l + Math.cos(ang)*w };
+    el('polygon',{ points:`${tip.x.toFixed(1)},${tip.y.toFixed(1)} ${p1.x.toFixed(1)},${p1.y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`,
+                   fill:T.color, opacity:o.dim ? .3 : 1 }, g);
+  } else if (T.cap === 'bar'){
+    const w = 17;
+    el('line',{ x1:tip.x - Math.sin(ang)*-w, y1:tip.y - Math.cos(ang)*w,
+                x2:tip.x + Math.sin(ang)*-w, y2:tip.y + Math.cos(ang)*w,
+                stroke:T.color, 'stroke-width':T.w, 'stroke-linecap':'round', opacity:o.dim ? .3 : 1 }, g);
+  } else if (T.cap === 'hook'){
+    el('circle',{ cx:tip.x - Math.cos(ang)*2, cy:tip.y - Math.sin(ang)*2, r:13,
+                  fill:'none', stroke:T.color, 'stroke-width':T.w, opacity:o.dim ? .3 : 1 }, g);
+  }
+}
+
+/* ---------------------------------------------------------------
+   8. APPLICATION STATE
+   --------------------------------------------------------------- */
+const DEFAULT_FORM = { offense:'i-form', defense:'5-3' };
+const STORE_KEY = 'coaches-playbook-v1';
+
+let store = { version:1, roster:[], plays:[], fieldStyle:'grass' };
+let S = {
+  side:'offense', n:11, play:null,
+  selected:null,          // player id
+  mode:'select',          // 'select' | 'draw'
+  drawTarget:null,        // { playerId, asgIndex }
+  ghost:false, anim:null, animRAF:0, dirty:false
+};
+
+function loadStore(){
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw){
+      const d = JSON.parse(raw);
+      if (d && typeof d === 'object'){
+        store.roster = Array.isArray(d.roster) ? d.roster : [];
+        store.plays  = Array.isArray(d.plays)  ? d.plays  : [];
+        if (FIELD_STYLES[d.fieldStyle]) store.fieldStyle = d.fieldStyle;
+      }
+    }
+  } catch (e){ console.warn('Could not read saved playbook:', e); }
+}
+function saveStore(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  catch (e){ toast('Could not save — browser storage is full or blocked'); }
+}
+
+/* ---------------------------------------------------------------
+   9. RENDERING THE PLAY
+   --------------------------------------------------------------- */
+function playerAt(id){ return S.play ? S.play.players.find(p => p.id === id) : null; }
+function drawPos(p){ return (S.anim && S.anim[p.id]) ? S.anim[p.id] : { x:p.x, y:p.y }; }
+
+/* faint opponent, so alignment makes sense on its own */
+function drawGhost(){
+  const g = L.ghost; g.textContent = '';
+  if (!S.ghost || !S.play) return;
+  const other = S.play.side === 'offense' ? 'defense' : 'offense';
+  buildLineup(other, DEFAULT_FORM[other], S.play.n).forEach(p => {
+    const c = other === 'offense' ? '#12233d' : '#b3151f';
+    if (other === 'offense')
+      el('circle',{ cx:p.x, cy:p.y, r:R-3, fill:'#ffffff', 'fill-opacity':.28,
+                    stroke:c, 'stroke-opacity':.42, 'stroke-width':4 }, g);
+    else
+      el('rect',{ x:p.x-R+4, y:p.y-R+4, width:(R-4)*2, height:(R-4)*2, rx:6,
+                  fill:'#ffffff','fill-opacity':.28, stroke:c,'stroke-opacity':.42,'stroke-width':4 }, g);
+  });
+}
+
+function drawPaths(){
+  const g = L.path; g.textContent = '';
+  const b = L.ball; b.textContent = '';
+  if (!S.play) return;
+  const dim = !!S.anim;
+  S.play.players.forEach(p => {
+    p.asg.forEach(a => { if (a.pts.length) drawLine(g, { x:p.x, y:p.y }, a.pts, a.t, { dim }); });
+  });
+  if (S.play.ball){
+    const src = playerAt(S.play.ball.from);
+    if (src && S.play.ball.pts.length) drawLine(b, { x:src.x, y:src.y }, S.play.ball.pts, 'pass', { dim });
+  }
+}
+
+function drawPlayers(){
+  const g = L.player; g.textContent = '';
+  if (!S.play) return;
+  S.play.players.forEach(p => {
+    const pos = drawPos(p);
+    const sel = p.id === S.selected;
+    const off = p.side === 'offense';
+    const fill   = off ? (p.role === 'ol' ? '#26415f' : '#12233d') : '#b3151f';
+    const stroke = sel ? '#ffd24a' : '#ffffff';
+    const sw     = sel ? 7 : 4;
+
+    const grp = el('g',{ 'data-player':p.id, style:'cursor:grab' }, g);
+    if (off) el('circle',{ cx:pos.x, cy:pos.y, r:R, fill, stroke, 'stroke-width':sw }, grp);
+    else     el('rect',{ x:pos.x-R, y:pos.y-R, width:R*2, height:R*2, rx:7, fill, stroke, 'stroke-width':sw }, grp);
+
+    const jersey = p.jersey != null ? store.roster[p.jersey] : null;
+    const main   = jersey ? String(jersey.num || '#') : p.label;
+    el('text',{ x:pos.x, y:pos.y + (main.length > 3 ? 6 : 7), 'text-anchor':'middle',
+                fill:'#ffffff', 'font-family':FONT, 'font-weight':800,
+                'font-size': main.length > 3 ? 17 : main.length > 2 ? 19 : 21,
+                'pointer-events':'none' }, grp).textContent = main;
+
+    if (jersey){
+      const T = theme();
+      el('text',{ x:pos.x, y:pos.y-R-9, 'text-anchor':'middle', fill:T.nameFill,'fill-opacity':.9,
+                  'font-family':FONT,'font-weight':800,'font-size':17,'pointer-events':'none',
+                  stroke:T.halo,'stroke-width':4,'paint-order':'stroke' }, grp).textContent = p.label;
+      if (jersey.name)
+        el('text',{ x:pos.x, y:pos.y+R+22, 'text-anchor':'middle', fill:T.nameFill,
+                    'font-family':FONT,'font-weight':700,'font-size':18,'pointer-events':'none',
+                    stroke:T.halo,'stroke-width':4.5,'paint-order':'stroke' }, grp).textContent = jersey.name;
+    }
+  });
+}
+
+/* waypoint handles for the selected player */
+function drawHandles(){
+  const g = L.handle; g.textContent = '';
+  if (!S.play || !S.selected || S.anim) return;
+  const p = playerAt(S.selected); if (!p) return;
+  p.asg.forEach((a, ai) => a.pts.forEach((pt, pi) => {
+    el('circle',{ cx:pt.x, cy:pt.y, r:11, fill:'#ffffff', stroke:(TYPES[a.t]||TYPES.run).color,
+                  'stroke-width':4, 'data-handle':`${ai}:${pi}`, style:'cursor:move' }, g);
+  }));
+}
+
+/* title band above the field + legend below — both ride along into the PNG */
+function drawChrome(){
+  const g = L.chrome; g.textContent = '';
+  if (!S.play) return;
+  const pl = S.play;
+  el('text',{ x:VX, y:VY-PAD_TOP+52, fill:'#12233d','font-family':FONT,'font-weight':800,'font-size':44 }, g)
+    .textContent = pl.name;
+  const meta = `${pl.side === 'offense' ? 'Offense' : 'Defense'}  ·  ${pl.n} v ${pl.n}  ·  ` +
+               ((pl.side === 'offense' ? OFF_FORMS[pl.form] : DEF_FORMS[pl.form])?.name || '');
+  el('text',{ x:VX, y:VY-PAD_TOP+90, fill:'#6b7a8c','font-family':FONT,'font-weight':700,'font-size':24,
+              'letter-spacing':'1' }, g).textContent = meta.toUpperCase();
+  el('text',{ x:VX+VW, y:VY-PAD_TOP+52, 'text-anchor':'end', fill:'#9aa8b8','font-family':FONT,
+              'font-weight':700,'font-size':22 }, g).textContent = "Coach's Playbook";
+  el('text',{ x:VX+VW, y:VY-PAD_TOP+90, 'text-anchor':'end', fill:'#6b7a8c','font-family':FONT,
+              'font-weight':700,'font-size':22,'letter-spacing':'1' }, g)
+    .textContent = '\u25b2 DOWNFIELD';
+
+  // legend: only the line types this play actually uses
+  const used = [];
+  pl.players.forEach(p => p.asg.forEach(a => { if (!used.includes(a.t)) used.push(a.t); }));
+  if (pl.ball && !used.includes('pass')) used.push('pass');
+  let x = VX + 2, row = 0;
+  const y0 = VY + VH + 50;
+  used.forEach(t => {
+    const T = TYPES[t]; if (!T) return;
+    const w = 62;
+    const cellW = w + 26 + T.label.length * 12.4;
+    if (x + cellW > VX + VW && x > VX + 2){ x = VX + 2; row++; }
+    const y = y0 + row * 46;
+    el('line',{ x1:x, y1:y, x2:x+w-(T.cap==='arrow'?12:6), y2:y, stroke:T.color,
+                'stroke-width':T.w,'stroke-linecap':'round','stroke-dasharray':T.dash }, g);
+    if (T.cap === 'arrow')
+      el('polygon',{ points:`${x+w},${y} ${x+w-15},${y-9} ${x+w-15},${y+9}`, fill:T.color }, g);
+    else if (T.cap === 'bar')
+      el('line',{ x1:x+w-4, y1:y-13, x2:x+w-4, y2:y+13, stroke:T.color,'stroke-width':T.w,'stroke-linecap':'round' }, g);
+    else
+      el('circle',{ cx:x+w-8, cy:y, r:11, fill:'none', stroke:T.color,'stroke-width':T.w }, g);
+    const label = el('text',{ x:x+w+12, y:y+8, fill:'#41505f','font-family':FONT,
+                              'font-weight':650,'font-size':23 }, g);
+    label.textContent = T.label;
+    x += cellW;
+  });
+}
+
+/** Size the vertical window to the play. `grow` never shrinks it mid-edit. */
+function fitView(grow){
+  if (!S.play) return false;
+  let top = MIN_TOP, bot = MIN_BOT;
+  const see = pt => { if (pt.y < top) top = pt.y; if (pt.y > bot) bot = pt.y; };
+  S.play.players.forEach(p => {
+    see({ y:p.y - R - 30 }); see({ y:p.y + R + 30 });
+    p.asg.forEach(a => a.pts.forEach(pt => { see({ y:pt.y - 34 }); see({ y:pt.y + 34 }); }));
+  });
+  if (S.play.ball) S.play.ball.pts.forEach(pt => { see({ y:pt.y - 34 }); see({ y:pt.y + 34 }); });
+  top = Math.max(TOP_LIMIT, top);
+  bot = Math.min(BOT_LIMIT, bot);
+  if (grow){ top = Math.min(top, VY); bot = Math.max(bot, VY + VH); }
+  if (Math.abs(top - VY) < 1 && Math.abs(bot - (VY + VH)) < 1) return false;
+  VY = top; VH = bot - top;
+  svg.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
+  drawTurf();
+  return true;
+}
+
+function renderField(){ drawGhost(); drawPaths(); drawPlayers(); drawHandles(); drawChrome(); }
+
+/* ---------------------------------------------------------------
+   10. SIDE PANELS
+   --------------------------------------------------------------- */
+const $  = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+function libraryFor(side, n){
+  return PLAYS.filter(p => (p.side || 'offense') === side && (p.min || 5) <= n);
+}
+
+function renderPlayList(){
+  const box = $('play-list');
+  const q   = $('search').value.trim().toLowerCase();
+  const mine = store.plays.filter(p => p.side === S.side && p.n === S.n);
+  const lib  = libraryFor(S.side, S.n);
+  const hit  = p => !q || (p.name + ' ' + (p.family||'') + ' ' + (p.note||'')).toLowerCase().includes(q);
+
+  let html = '';
+  const section = (title, items, custom) => {
+    const list = items.filter(hit);
+    if (!list.length) return;
+    html += `<div class="grp">${esc(title)}</div>`;
+    list.forEach(p => {
+      const on = S.play && S.play.id === p.id;
+      const form = (p.side === 'offense' ? OFF_FORMS[p.form] : DEF_FORMS[p.form]);
+      html += `<button class="play-item" data-play="${esc(p.id)}" data-custom="${custom?1:0}" aria-current="${on}">
+        <div class="nm">${esc(p.name)}</div>
+        <div class="sub">${esc(form ? form.name : '')}</div></button>`;
+    });
+  };
+
+  if (mine.length) section('My plays', mine, true);
+  const families = [];
+  lib.forEach(p => { if (!families.includes(p.family)) families.push(p.family); });
+  families.forEach(f => section(f, lib.filter(p => p.family === f), false));
+
+  if (!html) html = `<p class="empty">No plays match &ldquo;${esc(q)}&rdquo; for ${S.n} v ${S.n} ${S.side}.</p>`;
+  box.innerHTML = html;
+}
+
+function renderInspector(){
+  const box = $('inspector');
+  if (!S.play){ box.innerHTML = '<p class="insp-empty">Pick a play to get started.</p>'; return; }
+  const p = S.selected ? playerAt(S.selected) : null;
+  if (!p){
+    box.innerHTML = `<p class="insp-empty">
+      <b>Tap a player</b> on the field to give them a job.<br><br>
+      Drag any player to move them. Everything you change here stays on this device
+      until you save it to <b>My Plays</b>.</p>`;
+    return;
+  }
+
+  const isDef = p.side === 'defense';
+  const types = Object.keys(TYPES).filter(t => {
+    const s = TYPES[t].side;
+    return s === 'both' || s === p.side;
+  });
+  const rosterOpts = ['<option value="">— nobody —</option>'].concat(
+    store.roster.map((r, i) =>
+      `<option value="${i}" ${p.jersey === i ? 'selected' : ''}>#${esc(r.num)} ${esc(r.name)}</option>`)
+  ).join('');
+
+  let html = `
+    <div class="field-row" style="margin-top:0">
+      <label for="insp-label">Position label</label>
+      <input type="text" id="insp-label" value="${esc(p.label)}" maxlength="5">
+    </div>
+    <div class="field-row">
+      <label for="insp-roster">Which kid plays here</label>
+      <select id="insp-roster">${rosterOpts}</select>
+    </div>
+    <div class="sec">
+      <h3>Assignments</h3>`;
+
+  if (!p.asg.length) html += `<p class="insp-empty" style="margin:0 0 8px">No assignment yet — add one below.</p>`;
+
+  p.asg.forEach((a, i) => {
+    const T = TYPES[a.t] || TYPES.run;
+    html += `<div class="asg">
+      <div class="asg-hd">
+        <span class="swatch" style="border-top-color:${T.color};${T.dash?'border-top-style:dashed':''}"></span>
+        <span class="ttl">${esc(T.label)}</span>
+        <span class="pts">${a.pts.length} pt${a.pts.length===1?'':'s'}</span>
+      </div>
+      <select data-retype="${i}" style="margin-bottom:6px">
+        ${types.map(t => `<option value="${t}" ${t===a.t?'selected':''}>${esc(TYPES[t].label)}</option>`).join('')}
+      </select>
+      <div class="row2">
+        <button class="btn sm" style="background:#eef2f7" data-draw="${i}">${a.pts.length?'Redraw':'Draw path'}</button>
+        <button class="btn sm danger" data-delasg="${i}">Remove</button>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="field-row">
+      <label for="insp-add">Add an assignment</label>
+      <div class="row2">
+        <select id="insp-add">${types.map(t=>`<option value="${t}">${esc(TYPES[t].label)}</option>`).join('')}</select>
+        <button class="btn sm primary" id="insp-add-btn">Add &amp; draw</button>
+      </div>
+    </div>
+  </div>`;
+
+  if (p.side === 'offense'){
+    const isBall = S.play.ball && S.play.ball.from === p.id;
+    html += `<div class="sec"><h3>Ball flight</h3>
+      <button class="btn sm" style="background:${isBall?'#fdecec':'#eef2f7'};color:${isBall?'#8d1018':'inherit'}" id="insp-ball">
+        ${isBall ? 'Remove ball path' : 'Draw ball from here'}</button>
+      <p style="font-size:12px;color:var(--muted);margin:7px 0 0">Shows where the pass or pitch goes. One per play.</p>
+    </div>`;
+  }
+
+  html += `<div class="sec"><h3>Position</h3>
+    <button class="btn sm" style="background:#eef2f7;width:100%" id="insp-clear">Clear this player&rsquo;s lines</button></div>`;
+
+  box.innerHTML = html;
+}
+
+function renderHeader(){
+  if (!S.play) return;
+  $('play-name').value = S.play.name;
+  const form = (S.play.side === 'offense' ? OFF_FORMS : DEF_FORMS)[S.play.form];
+  $('play-tags').innerHTML =
+    `<span class="tag ${S.play.side === 'offense' ? 'off' : 'def'}">${S.play.side}</span>` +
+    `<span class="tag">${S.play.n} v ${S.play.n}</span>` +
+    (form ? `<span class="tag">${esc(form.name)}</span>` : '') +
+    (S.play.custom ? '<span class="tag">my play</span>' : '');
+
+  let note = document.querySelector('.stage .note');
+  const text = S.play.note || (form ? form.blurb : '');
+  if (text){
+    if (!note){
+      note = document.createElement('div');
+      note.className = 'note';
+      $('hint').parentNode.insertBefore(note, $('hint'));
+    }
+    note.innerHTML = `<b>Coaching point.</b> ${esc(text)}`;
+  } else if (note) note.remove();
+
+  $('btn-delete').disabled = !S.play.custom;
+}
+
+function renderLegendPanel(){
+  const box = $('legend');
+  const keys = Object.keys(TYPES).filter(t => {
+    const s = TYPES[t].side;
+    return s === 'both' || !S.play || s === S.play.side;
+  });
+  box.innerHTML = keys.map(t => {
+    const T = TYPES[t];
+    const cap = T.cap === 'arrow' ? '<polygon points="44,9 32,3 32,15" fill="'+T.color+'"/>'
+             : T.cap === 'bar'   ? '<line x1="40" y1="1" x2="40" y2="17" stroke="'+T.color+'" stroke-width="3.5"/>'
+             : '<circle cx="38" cy="9" r="6" fill="none" stroke="'+T.color+'" stroke-width="3"/>';
+    return `<span class="lg"><svg width="46" height="18" viewBox="0 0 46 18">
+      <line x1="2" y1="9" x2="${T.cap==='arrow'?32:T.cap==='bar'?40:31}" y2="9" stroke="${T.color}"
+        stroke-width="3.5" stroke-linecap="round" ${T.dash?`stroke-dasharray="${T.dash.split(' ').map(v=>v/3.4).join(' ')}"`:''}/>
+      ${cap}</svg>${esc(T.label)}</span>`;
+  }).join('');
+}
+
+function renderAll(){
+  renderPlayList(); renderHeader(); renderInspector(); renderLegendPanel(); renderField();
+}
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+/* ---------------------------------------------------------------
+   11. LOADING / RESETTING PLAYS
+   --------------------------------------------------------------- */
+let baseline = null;   // snapshot for "Reset play"
+
+function loadPlay(play){
+  stopAnim();
+  S.play = play;
+  S.selected = null;
+  setMode('select');
+  baseline = JSON.stringify(play);
+  S.dirty = false;
+  fitView(false);
+  renderAll();
+}
+function loadLibrary(id){
+  const def = PLAYS.find(p => p.id === id);
+  if (def) loadPlay(buildPlay(def, S.n));
+}
+function loadCustom(id){
+  const p = store.plays.find(x => x.id === id);
+  if (p) loadPlay(JSON.parse(JSON.stringify(p)));
+}
+function defaultPlayForSide(){
+  const lib = libraryFor(S.side, S.n);
+  const mine = store.plays.filter(p => p.side === S.side && p.n === S.n);
+  if (lib.length) loadPlay(buildPlay(lib[0], S.n));
+  else if (mine.length) loadCustom(mine[0].id);
+  else loadPlay(blankPlay('New play', S.side, S.n, DEFAULT_FORM[S.side]));
+}
+
+/* ---------------------------------------------------------------
+   12. POINTER INTERACTION — drag players, drag waypoints, draw paths
+   --------------------------------------------------------------- */
+function toField(evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const m = svg.getScreenCTM();
+  if (!m) return { x:0, y:0 };
+  const q = pt.matrixTransform(m.inverse());
+  return { x:q.x, y:q.y };
+}
+const clampX = x => Math.max(VX + R, Math.min(VX + VW - R, x));
+const clampY = y => Math.max(TOP_LIMIT + R, Math.min(BOT_LIMIT - R, y));
+
+let drag = null;
+
+svg.addEventListener('pointerdown', e => {
+  if (S.anim) return;
+  const pos = toField(e);
+
+  if (S.mode === 'draw'){
+    e.preventDefault();
+    addPoint(clampX(pos.x), clampY(pos.y));
+    return;
+  }
+
+  const hEl = e.target.closest('[data-handle]');
+  if (hEl && S.selected){
+    const [ai, pi] = hEl.getAttribute('data-handle').split(':').map(Number);
+    drag = { kind:'handle', ai, pi, dx:0, dy:0 };
+    svg.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return;
+  }
+
+  const pEl = e.target.closest('[data-player]');
+  if (pEl){
+    const p = playerAt(pEl.getAttribute('data-player'));
+    if (!p) return;
+    S.selected = p.id;
+    drag = { kind:'player', id:p.id, ox:pos.x - p.x, oy:pos.y - p.y, moved:false };
+    svg.setPointerCapture(e.pointerId);
+    renderInspector(); renderField();
+    e.preventDefault();
+    return;
+  }
+
+  if (S.selected){ S.selected = null; renderInspector(); renderField(); }
+});
+
+svg.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const pos = toField(e);
+  if (drag.kind === 'player'){
+    const p = playerAt(drag.id); if (!p) return;
+    const nx = clampX(pos.x - drag.ox), ny = clampY(pos.y - drag.oy);
+    const dx = nx - p.x, dy = ny - p.y;
+    if (Math.abs(dx) + Math.abs(dy) < 0.5) return;
+    p.x = nx; p.y = ny;
+    // the player's lines travel with them
+    p.asg.forEach(a => a.pts.forEach(pt => { pt.x += dx; pt.y += dy; }));
+    if (S.play.ball && S.play.ball.from === p.id)
+      S.play.ball.pts.forEach(pt => { pt.x += dx; pt.y += dy; });
+    drag.moved = true;
+  } else {
+    const p = playerAt(S.selected); if (!p) return;
+    const a = p.asg[drag.ai]; if (!a) return;
+    a.pts[drag.pi] = { x:clampX(pos.x), y:clampY(pos.y) };
+  }
+  S.dirty = true;
+  drawPaths(); drawPlayers(); drawHandles();
+});
+
+function endDrag(e){
+  if (!drag) return;
+  drag = null;
+  try { svg.releasePointerCapture(e.pointerId); } catch (_){}
+  fitView(true);
+  renderField();
+}
+svg.addEventListener('pointerup', endDrag);
+svg.addEventListener('pointercancel', endDrag);
+
+/* ---- path drawing mode ---- */
+function setMode(mode, target, label){
+  S.mode = mode;
+  S.drawTarget = target || null;
+  svg.classList.toggle('drawing', mode === 'draw');
+  $('hint').classList.toggle('on', mode === 'draw');
+  if (mode === 'draw') $('hint-text').textContent = label || 'Tap the field to draw the path.';
+}
+function currentDrawList(){
+  if (!S.drawTarget) return null;
+  if (S.drawTarget.ball) return S.play.ball ? S.play.ball.pts : null;
+  const p = playerAt(S.drawTarget.playerId);
+  return p && p.asg[S.drawTarget.ai] ? p.asg[S.drawTarget.ai].pts : null;
+}
+function addPoint(x, y){
+  const list = currentDrawList(); if (!list) return;
+  list.push({ x, y });
+  S.dirty = true;
+  fitView(true);
+  drawPaths(); drawHandles(); renderInspector();
+}
+$('hint-undo').onclick = () => {
+  const list = currentDrawList(); if (list && list.length) list.pop();
+  drawPaths(); drawHandles(); renderInspector();
+};
+$('hint-done').onclick = () => { setMode('select'); renderField(); renderInspector(); };
+
+/* ---------------------------------------------------------------
+   13. INSPECTOR ACTIONS
+   --------------------------------------------------------------- */
+$('inspector').addEventListener('click', e => {
+  const p = S.selected ? playerAt(S.selected) : null; if (!p) return;
+  const draw = e.target.closest('[data-draw]');
+  if (draw){
+    const ai = +draw.getAttribute('data-draw');
+    p.asg[ai].pts = [];
+    setMode('draw', { playerId:p.id, ai }, `Drawing ${TYPES[p.asg[ai].t].label.toLowerCase()} for ${p.label} — tap each turn in the path.`);
+    drawPaths(); drawHandles(); renderInspector();
+    return;
+  }
+  const del = e.target.closest('[data-delasg]');
+  if (del){
+    p.asg.splice(+del.getAttribute('data-delasg'), 1);
+    S.dirty = true; setMode('select'); renderField(); renderInspector();
+    return;
+  }
+  if (e.target.id === 'insp-add-btn'){
+    const t = $('insp-add').value;
+    p.asg.push({ t, pts:[] });
+    S.dirty = true;
+    setMode('draw', { playerId:p.id, ai:p.asg.length - 1 }, `Drawing ${TYPES[t].label.toLowerCase()} for ${p.label} — tap each turn in the path.`);
+    renderInspector(); renderField();
+    return;
+  }
+  if (e.target.id === 'insp-ball'){
+    if (S.play.ball && S.play.ball.from === p.id){ S.play.ball = null; setMode('select'); }
+    else {
+      S.play.ball = { from:p.id, pts:[] };
+      setMode('draw', { ball:true }, `Drawing the ball flight from ${p.label} — tap where it lands.`);
+    }
+    S.dirty = true; renderInspector(); renderField();
+    return;
+  }
+  if (e.target.id === 'insp-clear'){
+    p.asg = [];
+    if (S.play.ball && S.play.ball.from === p.id) S.play.ball = null;
+    S.dirty = true; setMode('select'); renderField(); renderInspector();
+  }
+});
+$('inspector').addEventListener('change', e => {
+  const p = S.selected ? playerAt(S.selected) : null; if (!p) return;
+  if (e.target.id === 'insp-roster'){
+    p.jersey = e.target.value === '' ? null : +e.target.value;
+    S.dirty = true; drawPlayers();
+  }
+  const re = e.target.closest('[data-retype]');
+  if (re){ p.asg[+re.getAttribute('data-retype')].t = re.value; S.dirty = true; renderField(); renderInspector(); }
+});
+$('inspector').addEventListener('input', e => {
+  const p = S.selected ? playerAt(S.selected) : null; if (!p) return;
+  if (e.target.id === 'insp-label'){ p.label = e.target.value.toUpperCase(); S.dirty = true; drawPlayers(); }
+});
+
+/* ---------------------------------------------------------------
+   14. ANIMATION — watch the play develop
+   --------------------------------------------------------------- */
+const DURATION = 2900;
+function pathOf(p){
+  const pts = [{ x:p.x, y:p.y }];
+  p.asg.forEach(a => a.pts.forEach(pt => pts.push({ x:pt.x, y:pt.y })));
+  return pts;
+}
+function stopAnim(){
+  cancelAnimationFrame(S.animRAF);
+  S.anim = null; S.animRAF = 0;
+  $('btn-animate').textContent = '▶ Animate';
+  if (S.play) renderField();
+}
+function runAnim(){
+  if (!S.play) return;
+  if (S.anim){ stopAnim(); return; }
+  const tracks = S.play.players.map(p => ({ id:p.id, pts:pathOf(p) })).filter(t => t.pts.length > 1);
+  if (!tracks.length && !S.play.ball){ toast('Nothing to animate yet — give someone an assignment'); return; }
+  const ballSrc = S.play.ball ? playerAt(S.play.ball.from) : null;
+  const ballPts = ballSrc ? [{ x:ballSrc.x, y:ballSrc.y }, ...S.play.ball.pts] : null;
+
+  $('btn-animate').textContent = '■ Stop';
+  S.selected = null;
+  const t0 = performance.now();
+  const tick = now => {
+    const raw = Math.min(1, (now - t0) / DURATION);
+    const e   = raw < .5 ? 2*raw*raw : 1 - Math.pow(-2*raw + 2, 2)/2;   // ease in/out
+    S.anim = {};
+    tracks.forEach(t => { S.anim[t.id] = pointAt(t.pts, e); });
+    drawPaths(); drawPlayers();
+    if (ballPts){
+      const bf = Math.max(0, Math.min(1, (raw - .45) / .4));
+      if (bf > 0){
+        const bp = pointAt(ballPts, bf);
+        el('ellipse',{ cx:bp.x, cy:bp.y, rx:15, ry:10, fill:'#8a4a1c', stroke:'#fff','stroke-width':3,
+                       transform:`rotate(-25 ${bp.x} ${bp.y})` }, L.ball);
+      }
+    }
+    if (raw < 1) S.animRAF = requestAnimationFrame(tick);
+    else setTimeout(stopAnim, 700);
+  };
+  S.animRAF = requestAnimationFrame(tick);
+}
+
+/* ---------------------------------------------------------------
+   15. EXPORTING
+   --------------------------------------------------------------- */
+function svgMarkup(){
+  const clone = svg.cloneNode(true);
+  clone.querySelector('#l-handle')?.remove();
+  clone.setAttribute('xmlns', NS);
+  clone.setAttribute('width',  VW);
+  clone.setAttribute('height', VH + PAD_TOP + PAD_BOT);
+  clone.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
+  return new XMLSerializer().serializeToString(clone);
+}
+function exportPNG(){
+  if (!S.play) return;
+  stopAnim();
+  const wasSel = S.selected; S.selected = null; renderField();
+  const scale = 2;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = VW * scale; c.height = (VH + PAD_TOP + PAD_BOT) * scale;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(b => {
+      if (!b){ toast('Export failed'); return; }
+      download(b, S.play.name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.png');
+      toast('PNG saved');
+    }, 'image/png');
+    S.selected = wasSel; renderField();
+  };
+  img.onerror = () => { toast('Export failed'); S.selected = wasSel; renderField(); };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgMarkup());
+}
+function download(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* ---------------------------------------------------------------
+   15b. PRINT / PDF
+   Renders each requested play into its own page. The browser's print
+   dialog turns that into paper or a PDF — no library needed.
+   --------------------------------------------------------------- */
+function renderToMarkup(play){
+  const keepPlay = S.play, keepSel = S.selected;
+  S.play = play; S.selected = null;
+  fitView(false); renderField();
+  const out = svgMarkup();
+  S.play = keepPlay; S.selected = keepSel;
+  fitView(false); renderField();
+  return out;
+}
+function printPlays(list){
+  if (!list.length){ toast('Nothing to print'); return; }
+  const area = $('print-area');
+  const form = p => ((p.side === 'offense' ? OFF_FORMS : DEF_FORMS)[p.form] || {}).name || '';
+  area.innerHTML = list.map(p => {
+    const note = p.note || (p.side === 'offense' ? OFF_FORMS[p.form] : DEF_FORMS[p.form])?.blurb || '';
+    return `<section class="print-page">
+      ${renderToMarkup(p)}
+      ${note ? `<div class="pnote"><b>Coaching point.</b> ${esc(note)}</div>` : ''}
+      <div class="pfoot"><span>${esc(p.name)} &middot; ${p.side} &middot; ${p.n} v ${p.n} &middot; ${esc(form(p))}</span>
+        <span>Coach&rsquo;s Playbook</span></div>
+    </section>`;
+  }).join('');
+  const clean = () => { area.innerHTML = ''; window.removeEventListener('afterprint', clean); };
+  window.addEventListener('afterprint', clean);
+  setTimeout(() => window.print(), 120);
+}
+
+/* ---------------------------------------------------------------
+   16. SAVING, DELETING, BACKUP
+   --------------------------------------------------------------- */
+function savePlay(){
+  if (!S.play) return;
+  const name = ($('play-name').value || 'Untitled play').trim();
+  S.play.name = name;
+  const copy = JSON.parse(JSON.stringify(S.play));
+  copy.custom = true;
+  copy.family = 'My plays';
+  const at = store.plays.findIndex(p => p.id === copy.id);
+  if (at >= 0 && S.play.custom){ store.plays[at] = copy; toast('Play updated'); }
+  else {
+    copy.id = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    store.plays.unshift(copy);
+    toast('Saved to My Plays');
+  }
+  S.play = copy; S.play.custom = true;
+  baseline = JSON.stringify(copy); S.dirty = false;
+  saveStore(); renderAll();
+}
+function deletePlay(){
+  if (!S.play || !S.play.custom) return;
+  if (!confirm(`Delete "${S.play.name}" from My Plays? This can't be undone.`)) return;
+  store.plays = store.plays.filter(p => p.id !== S.play.id);
+  saveStore(); defaultPlayForSide(); toast('Play deleted');
+}
+function resetPlay(){
+  if (!baseline) return;
+  loadPlay(JSON.parse(baseline));
+  toast('Back to the original');
+}
+function backup(){
+  const blob = new Blob([JSON.stringify({ version:1, exported:new Date().toISOString(), ...store }, null, 2)],
+                        { type:'application/json' });
+  download(blob, 'playbook-backup.json');
+  toast('Playbook downloaded');
+}
+function restore(file){
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const d = JSON.parse(fr.result);
+      if (!d || !Array.isArray(d.plays)) throw new Error('bad file');
+      const n = d.plays.length;
+      if (!confirm(`Load ${n} play${n===1?'':'s'} and ${(d.roster||[]).length} roster entries? This replaces what's on this device.`)) return;
+      store.roster = Array.isArray(d.roster) ? d.roster : [];
+      store.plays  = d.plays;
+      saveStore(); defaultPlayForSide(); toast('Playbook restored');
+    } catch (e){ toast("That doesn't look like a playbook file"); }
+  };
+  fr.readAsText(file);
+}
+
+/* ---------------------------------------------------------------
+   17. MODALS
+   --------------------------------------------------------------- */
+const openModal  = id => $(id).classList.add('on');
+const closeModal = id => $(id).classList.remove('on');
+document.addEventListener('click', e => {
+  if (e.target.matches('[data-close]') || e.target.classList.contains('modal'))
+    e.target.closest('.modal')?.classList.remove('on');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    document.querySelectorAll('.modal.on').forEach(m => m.classList.remove('on'));
+    if (S.mode === 'draw'){ setMode('select'); renderField(); renderInspector(); }
+  }
+  if (e.key === 'Enter' && S.mode === 'draw'){ setMode('select'); renderField(); renderInspector(); }
+});
+
+/* ---- roster ---- */
+function renderRoster(){
+  $('roster-rows').innerHTML = store.roster.map((r, i) => `
+    <div class="roster-row">
+      <input type="text" data-rnum="${i}" value="${esc(r.num)}" maxlength="3" placeholder="00">
+      <input type="text" data-rname="${i}" value="${esc(r.name)}" placeholder="Player name">
+      <button class="rm" data-rdel="${i}" title="Remove">&times;</button>
+    </div>`).join('') || '<p class="empty">No players yet.</p>';
+}
+$('roster-add').onclick = () => { store.roster.push({ num:'', name:'' }); saveStore(); renderRoster(); };
+$('roster-rows').addEventListener('input', e => {
+  const n = e.target.getAttribute('data-rnum'), m = e.target.getAttribute('data-rname');
+  if (n !== null) store.roster[+n].num  = e.target.value;
+  if (m !== null) store.roster[+m].name = e.target.value;
+  saveStore(); drawPlayers();
+});
+$('roster-rows').addEventListener('click', e => {
+  const d = e.target.getAttribute('data-rdel');
+  if (d === null) return;
+  store.roster.splice(+d, 1);
+  // keep everyone's assigned jersey pointing at the right person
+  const fix = pl => pl.players.forEach(p => {
+    if (p.jersey == null) return;
+    if (p.jersey === +d) p.jersey = null;
+    else if (p.jersey > +d) p.jersey--;
+  });
+  store.plays.forEach(fix);
+  if (S.play) fix(S.play);
+  saveStore(); renderRoster(); renderAll();
+});
+
+/* ---- new play ---- */
+function fillFormSelect(side, count){
+  const forms = side === 'offense' ? OFF_FORMS : DEF_FORMS;
+  $('new-form').innerHTML = Object.entries(forms)
+    .map(([k, f]) => `<option value="${k}">${esc(f.name)}</option>`).join('');
+}
+let newSide = 'offense';
+$('new-side').addEventListener('click', e => {
+  const b = e.target.closest('button[data-side]'); if (!b) return;
+  newSide = b.getAttribute('data-side');
+  [...$('new-side').children].forEach(x => x.setAttribute('aria-pressed', x === b));
+  fillFormSelect(newSide);
+});
+$('new-count').addEventListener('input', e => {
+  $('new-count-pill').textContent = `${e.target.value} v ${e.target.value}`;
+});
+$('btn-new').onclick = () => {
+  newSide = S.side;
+  [...$('new-side').children].forEach(x => x.setAttribute('aria-pressed', x.getAttribute('data-side') === newSide));
+  $('new-count').value = S.n;
+  $('new-count-pill').textContent = `${S.n} v ${S.n}`;
+  $('new-name').value = '';
+  fillFormSelect(newSide);
+  openModal('modal-new');
+  setTimeout(() => $('new-name').focus(), 60);
+};
+$('new-create').onclick = () => {
+  const name = ($('new-name').value || 'Untitled play').trim();
+  const n = +$('new-count').value;
+  S.side = newSide; S.n = n;
+  syncSideControls();
+  loadPlay(blankPlay(name, newSide, n, $('new-form').value));
+  closeModal('modal-new');
+  toast('Drag players, then tap one to give them a job');
+};
+
+/* ---- help ---- */
+$('help-body').innerHTML = `
+<h3>The quick version</h3>
+<ul>
+  <li>Pick <b>Offense</b> or <b>Defense</b>, set how many players are on the field, and choose a play from the list.</li>
+  <li>Hit <b>▶ Animate</b> to watch it develop — that is the part the kids understand fastest.</li>
+  <li><b>Export PNG</b> gives you an image to text to your assistants or parents. <b>Print / PDF</b> gives you a
+      clipboard sheet or a PDF of one play, your whole custom playbook, or everything on screen.</li>
+  <li>The <b>Field</b> menu switches the background from plain whiteboard up to full turf.</li>
+</ul>
+<h3>Making your own play</h3>
+<ul>
+  <li>Hit <b>+ New Play</b>, name it, pick the number of players and a starting formation.</li>
+  <li><b>Drag</b> any player to move them. The lines you have drawn move with them.</li>
+  <li><b>Tap</b> a player, choose an assignment (run, route, block, blitz, zone&hellip;) and hit <b>Add &amp; draw</b>.
+      Then tap the field once for every turn in the path. Hit <b>Done</b> or press <kbd>Enter</kbd> when you finish.</li>
+  <li>A player can have more than one assignment — for example <i>motion</i> and then <i>run</i>.</li>
+  <li>Drag the little white dots to nudge a path after you have drawn it.</li>
+  <li>Hit <b>Save to My Plays</b>. It stays on this device.</li>
+</ul>
+<h3>Reading the diagram</h3>
+<ul>
+  <li>Circles are offense, squares are defense. Downfield is up; the thick white line is the line of scrimmage.</li>
+  <li>A line ending in an <b>arrow</b> means that player is moving there. A line ending in a <b>cross bar</b> is a block.</li>
+  <li><b>Dashed</b> lines are fakes, motion or the ball in the air. A dashed line ending in a <b>circle</b> is a zone drop —
+      the defender settles in that area rather than chasing a man.</li>
+</ul>
+<h3>Printing and PDFs</h3>
+<p>Hit <b>Print / PDF</b> and pick whether you want just this play, everything in My Plays, or the whole
+list you are looking at &mdash; one play per page. In the print dialog choose <b>Save as PDF</b> as the
+destination and you have a file to email or keep on your phone.</p>
+<p>The <b>Field</b> menu above the diagram changes the background: <b>Whiteboard</b> is bare white with just
+the line of scrimmage, <b>Lined paper</b> adds faint five-yard lines, <b>Chalkboard</b> is a dark board for
+reading at night, and <b>Grass field</b> is the full turf. The first two use far less ink when you print.</p>
+
+<h3>Your roster</h3>
+<p>Open <b>Roster</b>, type in your kids' numbers and names once. Then tap any spot on the field and pick who plays there —
+their number goes in the circle and their name underneath, so every kid can find themselves on the sheet.</p>
+<h3>Keeping your work safe</h3>
+<p>Plays are saved in this browser on this device. Use <b>Backup</b> to download the whole playbook as a file, and
+<b>Restore</b> to load it on another phone, tablet or laptop — or to hand it to an assistant coach.</p>
+<h3>Fewer than eleven players</h3>
+<p>Change the player count and every formation rebuilds itself. Eight and up gives you five linemen; six and seven give you
+a center and two guards; five is a center only, the way most flag leagues play it. Library plays that need more bodies than
+you have are hidden automatically.</p>`;
+
+/* ---------------------------------------------------------------
+   18. WIRING
+   --------------------------------------------------------------- */
+function syncSideControls(){
+  [...$('side-toggle').children].forEach(b =>
+    b.setAttribute('aria-pressed', b.getAttribute('data-side') === S.side));
+  $('count-range').value = S.n;
+  $('count-pill').textContent = `${S.n} v ${S.n}`;
+}
+$('side-toggle').addEventListener('click', e => {
+  const b = e.target.closest('button[data-side]'); if (!b) return;
+  const side = b.getAttribute('data-side');
+  if (side === S.side) return;
+  S.side = side; syncSideControls(); defaultPlayForSide();
+});
+$('count-range').addEventListener('input', e => {
+  S.n = +e.target.value;
+  $('count-pill').textContent = `${S.n} v ${S.n}`;
+});
+$('count-range').addEventListener('change', () => {
+  // rebuild the current play at the new size where we can
+  const lib = PLAYS.find(p => S.play && p.id === S.play.id);
+  if (lib && (lib.min || 5) <= S.n) loadPlay(buildPlay(lib, S.n));
+  else defaultPlayForSide();
+});
+$('search').addEventListener('input', renderPlayList);
+$('play-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-play]'); if (!b) return;
+  if (S.dirty && !confirm('You have unsaved changes on this play. Leave them behind?')) return;
+  if (b.getAttribute('data-custom') === '1') loadCustom(b.getAttribute('data-play'));
+  else loadLibrary(b.getAttribute('data-play'));
+});
+$('play-name').addEventListener('input', e => {
+  if (S.play){ S.play.name = e.target.value; S.dirty = true; drawChrome(); }
+});
+$('field-style').innerHTML = Object.entries(FIELD_STYLES)
+  .map(([k, f]) => `<option value="${k}">${esc(f.name)}</option>`).join('');
+$('field-style').value = store.fieldStyle;
+$('field-style').title = theme().hint;
+$('field-style').addEventListener('change', e => {
+  store.fieldStyle = e.target.value;
+  $('field-style').title = theme().hint;
+  saveStore(); drawTurf(); renderField();
+});
+$('chk-ghost').addEventListener('change', e => { S.ghost = e.target.checked; drawGhost(); });
+$('btn-animate').onclick  = runAnim;
+$('btn-reset').onclick    = resetPlay;
+$('btn-save').onclick     = savePlay;
+$('btn-png').onclick      = exportPNG;
+$('btn-print').onclick    = () => { stopAnim(); openModal('modal-print'); };
+$('print-go').onclick     = () => {
+  const what = $('print-what').value;
+  let list = [S.play];
+  if (what === 'mine') list = store.plays.filter(p => p.side === S.side && p.n === S.n);
+  if (what === 'side'){
+    const q = $('search').value.trim().toLowerCase();
+    const hit = p => !q || (p.name + ' ' + (p.family||'') + ' ' + (p.note||'')).toLowerCase().includes(q);
+    list = store.plays.filter(p => p.side === S.side && p.n === S.n).filter(hit)
+      .concat(libraryFor(S.side, S.n).filter(hit).map(d => buildPlay(d, S.n)));
+  }
+  closeModal('modal-print');
+  printPlays(list.filter(Boolean));
+};
+$('btn-delete').onclick   = deletePlay;
+$('btn-roster').onclick   = () => { renderRoster(); openModal('modal-roster'); };
+$('btn-help').onclick     = () => openModal('modal-help');
+$('btn-download').onclick = backup;
+$('btn-upload').onclick   = () => $('file-input').click();
+$('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) restore(e.target.files[0]);
+  e.target.value = '';
+});
+window.addEventListener('beforeunload', e => {
+  if (S.dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ---------------------------------------------------------------
+   19. GO
+   --------------------------------------------------------------- */
+loadStore();
+initLayers();
+svg.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
+drawTurf();
+syncSideControls();
+defaultPlayForSide();
+</script>
+</body>
+</html>
