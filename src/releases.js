@@ -2,9 +2,18 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.2.0";
+export const VERSION = "1.2.1";
 
 export const RELEASES = [
+  {
+    version: "1.2.1",
+    date: "2026-08-20",
+    title: "The drawn arrow points where the ball goes",
+    notes: [
+      "The pass arrow on the diagram now ends where the receiver finishes his route, matching the animation. It had been stopping where he lined up — on Bubble Screen that was more than 13 yards short of the catch.",
+      "Man coverage lines are drawn to the receiver being covered, in the same place the animation takes the defender.",
+    ],
+  },
   {
     version: "1.2.0",
     date: "2026-08-20",

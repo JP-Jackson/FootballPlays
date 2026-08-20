@@ -1424,13 +1424,26 @@ function drawPaths(){
   const b = L.ball; b.textContent = '';
   if (!S.play) return;
   const dim = !!S.anim;
+  const marks = assignCoverage();
+
   S.play.players.forEach(p => {
-    p.asg.forEach(a => { if (a.pts.length) drawLine(g, { x:p.x, y:p.y }, a.pts, a.t, { dim }); });
+    p.asg.forEach(a => {
+      if (!a.pts.length) return;
+      let pts = a.pts;
+      // A man defender's line should point at his man where the route finishes,
+      // the same place the animation takes him.
+      const markId = a.t === 'man' ? marks.get(p.id) : null;
+      const mark = markId ? playerAt(markId) : null;
+      if (mark){
+        pts = a.pts.slice();
+        pts[pts.length - 1] = coverSpot(endOfPath(mark), { x:p.x, y:p.y });
+      }
+      drawLine(g, { x:p.x, y:p.y }, pts, a.t, { dim });
+    });
   });
-  if (S.play.ball){
-    const src = playerAt(S.play.ball.from);
-    if (src && S.play.ball.pts.length) drawLine(b, { x:src.x, y:src.y }, S.play.ball.pts, 'pass', { dim });
-  }
+
+  const flight = ballFlight();
+  if (flight) drawLine(b, { x:flight.src.x, y:flight.src.y }, flight.pts, 'pass', { dim });
 }
 
 function drawPlayers(){
@@ -2021,6 +2034,19 @@ function assignCoverage(){
   return marks;
 }
 
+/** Where the ball actually goes: the authored waypoints, with the final one
+ *  moved onto the receiver's catch point. The drawn arrow and the animation
+ *  both read this, so the line always points where the ball really ends up. */
+function ballFlight(){
+  if (!S.play || !S.play.ball) return null;
+  const src = playerAt(S.play.ball.from);
+  if (!src || !S.play.ball.pts.length) return null;
+  const pts = S.play.ball.pts.map(q => ({ x:q.x, y:q.y }));
+  const target = aimedAt(src, pts[pts.length - 1], src.side, true);
+  if (target) pts[pts.length - 1] = endOfPath(target);
+  return { src, pts, target };
+}
+
 /** Trail a covered player instead of standing on top of him. */
 function coverSpot(target, defenderStart){
   const dx = defenderStart.x - target.x, dy = defenderStart.y - target.y;
@@ -2040,10 +2066,10 @@ function runAnim(){
     id:p.id, pts:pathOf(p), follow: marks.get(p.id) || null, start:{ x:p.x, y:p.y },
   })).filter(t => t.pts.length > 1 || t.follow);
 
-  const ballSrc = S.play.ball ? playerAt(S.play.ball.from) : null;
-  const ballPts = ballSrc ? [{ x:ballSrc.x, y:ballSrc.y }, ...S.play.ball.pts] : null;
-  const receiver = ballPts && ballPts.length > 1
-    ? aimedAt(ballSrc, ballPts[ballPts.length - 1], null) : null;
+  const flight = ballFlight();
+  const ballSrc = flight && flight.src;
+  const ballPts = flight ? [{ x:ballSrc.x, y:ballSrc.y }, ...flight.pts] : null;
+  const receiver = flight && flight.target;
 
   if (!tracks.length && !ballPts){
     toast('Nothing to animate yet — give someone an assignment');
