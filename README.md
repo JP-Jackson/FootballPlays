@@ -11,36 +11,44 @@ Built for Josh Bujnoch's peewee team.
 
 Everything below is a one-time setup. After that, `npm run deploy` is the whole loop.
 
-The `football-plays` D1 database already exists and its tables are built, and its id
-is already in `wrangler.jsonc`. Two commands stand between the repo and a live site:
+Deployment is automatic. The Worker is connected to this repository through
+Cloudflare Workers Builds, so **every push to `main` builds and deploys itself** —
+there is nothing to run by hand. Watch a build under
+*Workers & Pages → football-plays → Settings → Builds*.
+
+The `football-plays` D1 database already exists with its tables built, and its id
+is in `wrangler.jsonc`.
+
+### Secrets
+
+Secrets are **not** set by a deploy — they live on the Worker and persist across
+them. Set them once, in *Settings → Variables and Secrets*, or from a terminal:
+
+| Secret | Required | What it does |
+| --- | --- | --- |
+| `SESSION_SECRET` | Yes | Signs login cookies. Any long random string. The app refuses to serve a page without it. |
+| `RESEND_API_KEY` | No | Turns on feedback email. Without it feedback still saves and still appears in the admin screen. |
+
+```bash
+npx wrangler secret put SESSION_SECRET
+```
+
+### Working on it locally
 
 ```bash
 npm install
-
-# The one secret it can't run without: signs the login cookies.
-# Any long random string; this generates one and pipes it straight in.
-node -e "console.log(crypto.randomUUID()+crypto.randomUUID())" | npx wrangler secret put SESSION_SECRET
-
-npm run deploy
+npm run db:local     # once, builds the tables in a local copy
+npm run dev
 ```
 
-If wrangler asks you to sign in, `npx wrangler login` opens a browser — no API token
-needed. It's stored per machine, so a machine that has deployed any Worker before is
-already authenticated.
-
-Optional, any time later — turns feedback email on. Without it, feedback still saves
-and still shows up in the admin screen:
-
-```bash
-npx wrangler secret put RESEND_API_KEY
-```
-
-Then open **https://footballplays.jpsapps.com** and you'll land on a one-time setup page
-to create your admin account. That page turns itself off the moment the account exists,
-so it can't be used to add a second admin.
-
-Local development: `npm run db:local` once, then `npm run dev`.
 Local runs read secrets from `.dev.vars` (gitignored).
+
+Two things local dev does **not** reproduce, both learned the hard way:
+
+- **It does not enforce the runtime's PBKDF2 iteration cap.** A count above
+  100,000 passes every local test and fails on every real request.
+- Anything else limit-related is worth confirming with `npx wrangler dev --remote`,
+  which runs on Cloudflare's edge rather than a local sandbox.
 
 ### Feedback email
 
