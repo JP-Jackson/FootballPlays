@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game log · Football Plays</title>
+<link rel="icon" href="/brand/jp-logo.svg">
+<link rel="apple-touch-icon" href="/brand/jp-180.png">
+<link rel="stylesheet" href="/shell.css">
+<style>
+  .wrap{max-width:1000px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .tabs{display:flex;background:#eef2f7;border-radius:10px;padding:3px;gap:3px;overflow-x:auto}
+  .tabs button{flex:1;min-width:112px;border:0;background:transparent;padding:10px 8px;border-radius:8px;
+    font-weight:700;font-size:13.5px;color:var(--muted);white-space:nowrap}
+  .tabs button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,32,50,.16)}
+  .view{display:none}
+  .view.on{display:block}
+
+  .game{border-bottom:1px solid var(--line)}
+  .game:last-child{border-bottom:0}
+  .game-hd{display:flex;gap:12px;align-items:center;padding:13px 15px;cursor:pointer;flex-wrap:wrap}
+  .game-hd:hover{background:#f7fafc}
+  .vs{font-weight:750;font-size:15px}
+  .date{font-size:12.5px;color:var(--muted)}
+  .pill{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    padding:4px 9px;border-radius:999px;background:#eef2f7;color:var(--muted);white-space:nowrap}
+  .pill.w{background:#e9f6ee;color:#1d5c37}
+  .pill.l{background:#fdecec;color:#8d1018}
+  .spacer{margin-left:auto}
+  .game-bd{padding:0 15px 16px;background:#fbfcfe;border-top:1px solid var(--line)}
+  .game-bd.hide{display:none}
+
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);padding:9px 10px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  .num{font-variant-numeric:tabular-nums;text-align:right}
+
+  /* Stars are the primary input on this page, so they are big enough to hit
+     with a thumb on a sideline. */
+  .stars{display:inline-flex;gap:2px}
+  .stars button{border:0;background:transparent;padding:2px;font-size:19px;line-height:1;
+    color:#d6dee7;min-width:30px;min-height:34px}
+  .stars button.on{color:#e0a02f}
+  .stars button:hover{color:#e0a02f}
+  .stars.read button{pointer-events:none;min-width:0;min-height:0;font-size:15px;padding:0}
+
+  .empty{padding:34px 16px;text-align:center;color:var(--muted)}
+  .empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:5px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+  .row .field{margin-top:0;flex:1;min-width:150px}
+  .bars{display:flex;flex-direction:column;gap:9px}
+  .bar-row{display:grid;grid-template-columns:1fr 92px 62px;gap:10px;align-items:center;font-size:13.5px}
+  .bar{height:9px;border-radius:999px;background:#e9eef4;overflow:hidden}
+  .bar span{display:block;height:100%;background:var(--turf-lt);border-radius:999px}
+  .why{font-size:12px;color:var(--muted)}
+  .stale .bar span{background:var(--amber)}
+  .lede{color:var(--muted);font-size:13.5px;margin:0 0 12px}
+</style>
+</head>
+<body>
+<header class="topbar"></header>
+<main class="wrap">
+  <div class="tabs" role="tablist">
+    <button role="tab" data-view="season"   aria-selected="true">Season</button>
+    <button role="tab" data-view="opponents" aria-selected="false">By opponent</button>
+    <button role="tab" data-view="practice" aria-selected="false">What to practice</button>
+    <button role="tab" data-view="best"      aria-selected="false">What's working</button>
+  </div>
+
+  <!-- ── season ── -->
+  <section class="view on" id="v-season">
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-hd"><h2>Log a game</h2></div>
+      <div class="panel-bd">
+        <div class="row">
+          <div class="field"><label for="g-opp">Opponent</label>
+            <input type="text" id="g-opp" placeholder="Wildcats"></div>
+          <div class="field"><label for="g-date">Date</label>
+            <input type="date" id="g-date"></div>
+          <div class="field"><label for="g-res">Result</label>
+            <input type="text" id="g-res" placeholder="W 21-6"></div>
+          <button class="btn primary" id="g-add">Add game</button>
+        </div>
+        <div class="err" id="g-err"></div>
+      </div>
+    </div>
+    <div class="panel" id="games"><p class="empty">Loading…</p></div>
+  </section>
+
+  <!-- ── opponents ── -->
+  <section class="view" id="v-opponents">
+    <div class="panel"><div class="panel-hd"><h2>Who you've played</h2></div>
+      <div id="opps"><p class="empty">Loading…</p></div></div>
+  </section>
+
+  <!-- ── practice ── -->
+  <section class="view" id="v-practice">
+    <div class="panel"><div class="panel-hd"><h2>Worth practising</h2></div>
+      <div class="panel-bd">
+        <p class="lede">Plays your kids struggled with, and plays they haven't run in a while.
+          Rustiness and weakness both end up here.</p>
+        <div id="practice"><p class="empty">Loading…</p></div>
+      </div></div>
+  </section>
+
+  <!-- ── best ── -->
+  <section class="view" id="v-best">
+    <div class="panel"><div class="panel-hd"><h2>What's working</h2></div>
+      <div class="panel-bd">
+        <p class="lede">Your best-rated plays, most reliable first. Only plays you've
+          actually scored show up here.</p>
+        <div id="best"><p class="empty">Loading…</p></div>
+      </div></div>
+  </section>
+</main>
+
+<script src="/library-index.js"></script>
+<script src="/shell.js"></script>
+<script>
+(function(){
+  var api = Shell.api, esc = Shell.esc, toast = Shell.toast;
+  var GAMES = [], INS = { perPlay:[], perOpponent:[] }, PLAYS = [], OPEN = null, LOGS = {};
+
+  var fmt = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined,
+      { weekday:'short', month:'short', day:'numeric' }); } catch(e){ return d; } };
+  var daysAgo = d => Math.round((Date.now() - new Date(d + 'T12:00:00')) / 86400000);
+
+  function starHtml(playId, rating, readonly){
+    var r = rating || 0;
+    var out = '<span class="stars' + (readonly ? ' read' : '') + '">';
+    for (var i = 1; i <= 5; i++)
+      out += '<button ' + (readonly ? 'tabindex="-1" aria-hidden="true"' :
+             'data-star="' + esc(playId) + ':' + i + '" aria-label="' + i + ' star' + (i>1?'s':'') + '"') +
+             ' class="' + (i <= r ? 'on' : '') + '">' + (i <= r ? '★' : '☆') + '</button>';
+    return out + '</span>';
+  }
+
+  /* ---- season ---- */
+  function renderGames(){
+    var box = document.getElementById('games');
+    if (!GAMES.length){
+      box.innerHTML = '<p class="empty"><b>No games logged yet</b>' +
+        'Add one above after your next game — opponent, date, then tap stars against the plays you ran.</p>';
+      return;
+    }
+    box.innerHTML = GAMES.map(function(g){
+      var open = OPEN === g.id;
+      var res = (g.result || '').trim();
+      var cls = /^w/i.test(res) ? ' w' : /^l/i.test(res) ? ' l' : '';
+      return '<article class="game">' +
+        '<div class="game-hd" data-open="' + esc(g.id) + '">' +
+          '<div><div class="vs">vs ' + esc(g.opponent) + '</div>' +
+          '<div class="date">' + esc(fmt(g.played_on)) + '</div></div>' +
+          (res ? '<span class="pill' + cls + '">' + esc(res) + '</span>' : '') +
+          '<span class="spacer"></span>' +
+          '<span class="date">' + (g.plays_logged || 0) + ' play' + (g.plays_logged == 1 ? '' : 's') +
+            (g.avg_rating ? ' · avg ' + (+g.avg_rating).toFixed(1) + '★' : '') + '</span>' +
+        '</div>' +
+        '<div class="game-bd' + (open ? '' : ' hide') + '" data-body="' + esc(g.id) + '">' +
+          (open ? gameBody(g) : '') +
+        '</div></article>';
+    }).join('');
+  }
+
+  function gameBody(g){
+    var rows = LOGS[g.id] || [];
+    var used = {}; rows.forEach(function(r){ used[r.play_id] = r; });
+    var options = PLAYS.filter(function(p){ return !used[p.id]; })
+      .map(function(p){ return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
+
+    return '<table><thead><tr><th>Play</th><th class="num">Times run</th><th>How it went</th><th></th></tr></thead><tbody>' +
+      (rows.length ? rows.map(function(r){
+        return '<tr>' +
+          '<td>' + esc(r.play_name) + (r.note ? '<div class="why">' + esc(r.note) + '</div>' : '') + '</td>' +
+          '<td class="num">' + r.times_run + '</td>' +
+          '<td>' + starHtml(r.play_id, r.rating) + '</td>' +
+          '<td style="text-align:right"><button class="btn sm danger" data-rm="' + esc(r.id) + '">Remove</button></td>' +
+        '</tr>';
+      }).join('') : '<tr><td colspan="4" class="why" style="padding:12px 10px">Nothing logged for this game yet.</td></tr>') +
+      '</tbody></table>' +
+      '<div class="row" style="margin-top:12px">' +
+        '<div class="field"><label for="add-play-' + esc(g.id) + '">Add a play you ran</label>' +
+          '<select id="add-play-' + esc(g.id) + '" data-addplay="' + esc(g.id) + '">' +
+          (options || '<option value="">every play is logged</option>') + '</select></div>' +
+        '<div class="field" style="max-width:120px"><label for="add-times-' + esc(g.id) + '">Times</label>' +
+          '<input type="number" id="add-times-' + esc(g.id) + '" min="1" max="99" value="1" data-addtimes="' + esc(g.id) + '"></div>' +
+        '<button class="btn primary" data-addlog="' + esc(g.id) + '"' + (options ? '' : ' disabled') + '>Add</button>' +
+        '<button class="btn danger" data-delgame="' + esc(g.id) + '">Delete game</button>' +
+      '</div>';
+  }
+
+  /* ---- opponents ---- */
+  function renderOpponents(){
+    var box = document.getElementById('opps');
+    var list = INS.perOpponent || [];
+    if (!list.length){ box.innerHTML = '<p class="empty">Nothing here until you log a game.</p>'; return; }
+    box.innerHTML = list.map(function(o){
+      var theirs = GAMES.filter(function(g){ return g.opponent === o.opponent; });
+      return '<article class="game"><div class="game-hd" style="cursor:default">' +
+        '<div><div class="vs">' + esc(o.opponent) + '</div>' +
+        '<div class="date">' + o.games + ' game' + (o.games == 1 ? '' : 's') +
+          ' · last ' + esc(fmt(o.last_played)) + '</div></div>' +
+        '<span class="spacer"></span>' +
+        (o.avg_rating ? '<span class="pill">avg ' + (+o.avg_rating).toFixed(1) + '★</span>' : '') +
+        '</div><div class="game-bd">' +
+        theirs.map(function(g){
+          var rows = LOGS[g.id] || [];
+          return '<div style="padding:10px 0"><div class="date" style="font-weight:700;color:var(--ink)">' +
+            esc(fmt(g.played_on)) + (g.result ? ' · ' + esc(g.result) : '') + '</div>' +
+            (rows.length ? '<table style="margin-top:6px"><tbody>' + rows.map(function(r){
+              return '<tr><td>' + esc(r.play_name) + '</td><td style="width:100px">' +
+                starHtml(r.play_id, r.rating, true) + '</td>' +
+                '<td class="why">' + esc(r.note || '') + '</td></tr>';
+            }).join('') + '</tbody></table>' : '<div class="why">No plays logged.</div>') + '</div>';
+        }).join('') + '</div></article>';
+    }).join('');
+  }
+
+  /* ---- insight lists ---- */
+  function bars(list, box, emptyMsg, showStale){
+    if (!list.length){ box.innerHTML = '<p class="empty">' + emptyMsg + '</p>'; return; }
+    box.innerHTML = '<div class="bars">' + list.map(function(p){
+      var avg = p.avg_rating == null ? null : +p.avg_rating;
+      var stale = showStale && p.last_run && daysAgo(p.last_run) >= 21;
+      var pct = avg == null ? 0 : (avg / 5) * 100;
+      return '<div class="bar-row' + (stale ? ' stale' : '') + '">' +
+        '<div>' + esc(p.play_name) +
+          '<div class="why">' + (p.times_run || 0) + ' run' + (p.times_run == 1 ? '' : 's') +
+          ' across ' + p.games + ' game' + (p.games == 1 ? '' : 's') +
+          (p.last_run ? ' · last ' + esc(fmt(p.last_run)) : '') +
+          (stale ? ' · not run in ' + daysAgo(p.last_run) + ' days' : '') + '</div></div>' +
+        '<div class="bar"><span style="width:' + pct.toFixed(0) + '%"></span></div>' +
+        '<div class="num">' + (avg == null ? '—' : avg.toFixed(1) + '★') + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderInsights(){
+    var rated = (INS.perPlay || []).filter(function(p){ return p.rated > 0; });
+    // Weak or rusty: a low average, or nothing for three weeks.
+    var practice = (INS.perPlay || []).filter(function(p){
+      return (p.avg_rating != null && p.avg_rating < 3.5) ||
+             (p.last_run && daysAgo(p.last_run) >= 21);
+    }).sort(function(a,b){ return (a.avg_rating ?? 9) - (b.avg_rating ?? 9); });
+
+    bars(practice, document.getElementById('practice'),
+      'Nothing needs work yet — log a few games and the weak spots will show up here.', true);
+    // A play only belongs under "what's working" if it is actually working.
+    // Showing the least-bad of a bad bunch would be worse than showing nothing.
+    var working = rated.filter(function(p){ return p.avg_rating >= 3.5; });
+    bars(working.slice(0, 12), document.getElementById('best'),
+      rated.length ? 'Nothing is averaging three and a half stars yet.'
+                   : 'No rated plays yet. Tap the stars against a play in the Season tab.', false);
+  }
+
+  /* ---- data ---- */
+  async function loadAll(){
+    var [g, i, p] = await Promise.all([api('/api/games'), api('/api/insights'), api('/api/plays')]);
+    GAMES = g.games;
+    INS = i;
+    // Both the built-in library and this team's own plays can be logged.
+    PLAYS = (window.LIBRARY_PLAYS || []).concat(
+      p.plays.map(function(x){ return { id:x.id, name:x.name }; }));
+    // Every game's rows, so the opponent view can show them without extra taps.
+    await Promise.all(GAMES.map(async function(game){
+      var d = await api('/api/games/' + encodeURIComponent(game.id));
+      LOGS[game.id] = d.logs;
+    }));
+    renderGames(); renderOpponents(); renderInsights();
+  }
+
+  /* ---- events ---- */
+  document.querySelector('.tabs').addEventListener('click', function(e){
+    var b = e.target.closest('[data-view]'); if (!b) return;
+    document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected', x === b); });
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+    document.getElementById('v-' + b.getAttribute('data-view')).classList.add('on');
+  });
+
+  document.getElementById('g-add').addEventListener('click', async function(){
+    var err = document.getElementById('g-err'); err.classList.remove('on');
+    try {
+      var r = await api('/api/games', { method:'POST', body:{
+        opponent: document.getElementById('g-opp').value,
+        played_on: document.getElementById('g-date').value,
+        result: document.getElementById('g-res').value,
+      } });
+      document.getElementById('g-opp').value = '';
+      document.getElementById('g-res').value = '';
+      OPEN = r.game.id;
+      await loadAll();
+      toast('Game added — now log the plays you ran');
+    } catch (e){ err.textContent = e.message; err.classList.add('on'); }
+  });
+
+  document.getElementById('games').addEventListener('click', async function(e){
+    var open = e.target.closest('[data-open]');
+    if (open){ var id = open.getAttribute('data-open'); OPEN = OPEN === id ? null : id; renderGames(); return; }
+
+    var add = e.target.closest('[data-addlog]');
+    if (add){
+      var gid = add.getAttribute('data-addlog');
+      var sel = document.querySelector('[data-addplay="' + CSS.escape(gid) + '"]');
+      var times = document.querySelector('[data-addtimes="' + CSS.escape(gid) + '"]');
+      if (!sel.value) return;
+      try {
+        await api('/api/games/' + encodeURIComponent(gid) + '/logs', { method:'POST', body:{
+          play_id: sel.value, play_name: sel.options[sel.selectedIndex].textContent,
+          times_run: +times.value || 1 } });
+        await loadAll();
+      } catch (e2){ toast(e2.message, true); }
+      return;
+    }
+
+    var star = e.target.closest('[data-star]');
+    if (star){
+      var parts = star.getAttribute('data-star').split(':');
+      var row = (LOGS[OPEN] || []).find(function(r){ return r.play_id === parts[0]; });
+      if (!row) return;
+      try {
+        await api('/api/games/' + encodeURIComponent(OPEN) + '/logs', { method:'POST', body:{
+          play_id: row.play_id, play_name: row.play_name, times_run: row.times_run,
+          rating: +parts[1], note: row.note } });
+        await loadAll();
+      } catch (e3){ toast(e3.message, true); }
+      return;
+    }
+
+    var rm = e.target.closest('[data-rm]');
+    if (rm){
+      try { await api('/api/logs/' + encodeURIComponent(rm.getAttribute('data-rm')), { method:'DELETE' }); await loadAll(); }
+      catch (e4){ toast(e4.message, true); }
+      return;
+    }
+
+    var del = e.target.closest('[data-delgame]');
+    if (del){
+      var g = GAMES.find(function(x){ return x.id === del.getAttribute('data-delgame'); });
+      if (!confirm('Delete the game against ' + g.opponent + '? Everything logged for it goes too.')) return;
+      try { await api('/api/games/' + encodeURIComponent(g.id), { method:'DELETE' }); OPEN = null; await loadAll(); toast('Game deleted'); }
+      catch (e5){ toast(e5.message, true); }
+    }
+  });
+
+  (async function(){
+    await Shell.start('history');
+    document.getElementById('g-date').value = new Date().toISOString().slice(0, 10);
+    await loadAll();
+  })().catch(function(e){
+    document.getElementById('games').innerHTML = '<p class="empty">' + Shell.esc(e.message) + '</p>';
+  });
+})();
+</script>
+</body>
+</html>

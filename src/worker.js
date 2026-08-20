@@ -9,6 +9,7 @@ import {
 import { handleAuth, handleChangePassword, countUsers } from "./auth.js";
 import { handleUsers } from "./users.js";
 import { handlePlays } from "./plays.js";
+import { handleHistory } from "./history.js";
 import { handleFeedbackSubmit, handleFeedbackAdmin } from "./feedback.js";
 import { VERSION, RELEASES } from "./releases.js";
 
@@ -96,6 +97,11 @@ async function route(request, env, url, path, method) {
 
   const plays = await handlePlays(request, env, path, method, user);
   if (plays) return plays;
+
+  const history = await handleHistory(request, env, path, method, user);
+  if (history) return history;
+
+  if (path === "/history") return asset(request, env, "/history.html");
 
   /* ── Admin only ────────────────────────────────────────────────────── */
   if (path.startsWith("/admin")) {

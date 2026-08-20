@@ -50,6 +50,7 @@
     const isAdmin = user && user.role === "admin";
     const nav = [
       { href: "/", label: "Playbook", key: "app" },
+      { href: "/history", label: "Game log", key: "history" },
       isAdmin ? { href: "/admin/feedback", label: "Feedback", key: "feedback" } : null,
       isAdmin ? { href: "/admin/users", label: "Access & Roles", key: "users" } : null,
     ].filter(Boolean);
@@ -71,6 +72,7 @@
   const PAGE_NAMES = {
     "/": "Play designer",
     "/app": "Play designer",
+    "/history": "Game log",
     "/admin/feedback": "Feedback admin",
     "/admin/users": "Access & Roles",
   };

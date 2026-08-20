@@ -2,9 +2,24 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.6.0";
+export const VERSION = "1.7.0";
 
 export const RELEASES = [
+  {
+    version: "1.7.0",
+    date: "2026-08-20",
+    title: "Rate your plays and keep a game log",
+    notes: [
+      "New Game log tab. Add a game — opponent, date, result — then log the plays you ran and give each one one to five stars.",
+      "Deliberately one entry per play per game, not per snap. Nobody charts a peewee game live, and a log that never gets filled in is worse than none.",
+      "By opponent: pull up a team you are about to play again and see what worked last time and what got blown up.",
+      "What to practice: plays rated under three and a half stars, and plays nobody has run in three weeks. Weakness and rustiness both surface here.",
+      "What's working: your best plays, most reliable first. A play has to average three and a half stars to appear — showing the least bad of a bad bunch would be worse than showing nothing.",
+      "Star ratings appear beside plays in the playbook, so a play's track record is visible while you are picking one.",
+      "Logging the same play twice in a game corrects the first entry rather than adding a second.",
+      "Play names are snapshotted when logged, so renaming or deleting a play never rewrites what you ran that day.",
+    ],
+  },
   {
     version: "1.6.0",
     date: "2026-08-20",

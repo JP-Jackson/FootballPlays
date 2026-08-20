@@ -103,3 +103,40 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS audit_created ON audit_log (created_at DESC);
+
+-- ── Game log ────────────────────────────────────────────────────────────
+-- One row per game, one row per play you ran in it. Deliberately not per
+-- snap: nobody is charting a peewee game live, and a log nobody fills in is
+-- worse than none. This is what a coach can honestly write on the drive home.
+CREATE TABLE IF NOT EXISTS games (
+  id         TEXT PRIMARY KEY,
+  team       TEXT NOT NULL,
+  opponent   TEXT NOT NULL,
+  played_on  TEXT NOT NULL,          -- YYYY-MM-DD
+  result     TEXT,                   -- free text: 'W 21-6', 'scrimmage', whatever
+  notes      TEXT,
+  created_at TEXT NOT NULL,
+  created_by TEXT,
+  updated_at TEXT,
+  updated_by TEXT
+);
+CREATE INDEX IF NOT EXISTS games_team ON games (team, played_on DESC);
+
+CREATE TABLE IF NOT EXISTS play_logs (
+  id         TEXT PRIMARY KEY,
+  game_id    TEXT NOT NULL,
+  team       TEXT NOT NULL,
+  -- Either a custom play's uuid or a built-in play's id ('wedge'). The name is
+  -- snapshotted alongside it so history survives a play being renamed or
+  -- deleted — what you ran that day doesn't change because the playbook did.
+  play_id    TEXT NOT NULL,
+  play_name  TEXT NOT NULL,
+  times_run  INTEGER NOT NULL DEFAULT 1,
+  rating     INTEGER,                -- 1..5, null if not scored
+  note       TEXT,
+  created_at TEXT NOT NULL,
+  created_by TEXT,
+  updated_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS play_logs_once ON play_logs (game_id, play_id);
+CREATE INDEX IF NOT EXISTS play_logs_team ON play_logs (team, play_id);

@@ -177,6 +177,8 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
 .play-item:hover{background:#f1f5f9}
 .play-item[aria-current="true"]{background:#eaf4ff;border-color:#bcd9f5}
 .play-item .nm{font-weight:650;font-size:13.5px}
+.rate{color:#e0a02f;letter-spacing:-1px}
+.rate-dim{color:#d6dee7}
 .play-item .sub{font-size:11.5px;color:var(--muted)}
 .empty{color:var(--muted);font-size:13px;padding:10px 2px}
 
@@ -535,6 +537,7 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
 <div id="print-area" aria-hidden="true"></div>
 <div class="toast" id="toast"></div>
 
+<script src="/library-index.js"></script>
 <script src="/shell.js"></script>
 <script>
 "use strict";
@@ -1514,6 +1517,10 @@ const PREF_KEY = 'football-plays-prefs';
 
 let store = { version:1, roster:[], plays:[], fieldStyle:'grass' };
 let ME = null;
+// How each play has actually gone, keyed by play id, from the game log. Purely
+// decorative in the designer: it loads best-effort and its absence never stops
+// the app drawing a play.
+let RATINGS = {};
 let S = {
   side:'offense', n:11, play:null,
   selected:null,          // player id
@@ -1523,12 +1530,22 @@ let S = {
 };
 
 /** Pull the team's playbook and roster off the server. */
+async function loadRatings(){
+  try {
+    const d = await Shell.api('/api/insights');
+    RATINGS = Object.fromEntries((d.perPlay || [])
+      .filter(r => r.avg_rating != null)
+      .map(r => [r.play_id, { avg:+r.avg_rating, runs:r.times_run, last:r.last_run }]));
+  } catch (e){ RATINGS = {}; }
+}
+
 async function loadStore(){
   const [plays, roster] = await Promise.all([
     Shell.api('/api/plays'),
     Shell.api('/api/roster'),
   ]);
   store.plays  = plays.plays || [];
+  await loadRatings();
   store.roster = (roster.roster || []).map(r => ({ id:r.id, num:r.num || '', name:r.name || '' }));
   try {
     const pref = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
@@ -1858,6 +1875,15 @@ function libraryFor(side, n){
   return PLAYS.filter(p => (p.side || 'offense') === side && (p.min || 5) <= n);
 }
 
+/** A play's track record, if it has one. Deliberately terse — the play list is
+ *  for finding a play, not for reading statistics. */
+function starSuffix(id){
+  const r = RATINGS[id];
+  if (!r) return '';
+  const n = Math.round(r.avg);
+  return ` · <span class="rate">${'\u2605'.repeat(n)}<span class="rate-dim">${'\u2605'.repeat(5 - n)}</span></span>`;
+}
+
 function renderPlayList(){
   const box = $('play-list');
   const q   = $('search').value.trim().toLowerCase();
@@ -1877,7 +1903,7 @@ function renderPlayList(){
       html += `<div class="play-row ${on ? 'on' : ''}">
         <button class="play-item" data-play="${id}" data-custom="${custom?1:0}" aria-current="${on}">
           <div class="nm">${esc(p.name)}</div>
-          <div class="sub">${esc(form ? form.name : '')}</div>
+          <div class="sub">${esc(form ? form.name : '')}${starSuffix(p.id)}</div>
         </button>
         <div class="play-acts">
           <button data-copy="${id}" data-custom="${custom?1:0}" title="Make a copy I can change">&#10697;</button>
@@ -3042,6 +3068,13 @@ window.addEventListener('beforeunload', e => {
    19. GO
    --------------------------------------------------------------- */
 (async function boot(){
+  // library-index.js carries a copy of the built-in play names for the game
+  // log. If someone adds a play here and forgets that file, say so loudly
+  // rather than letting the log quietly go missing an option.
+  if (Array.isArray(window.LIBRARY_PLAYS) && window.LIBRARY_PLAYS.length !== PLAYS.length){
+    console.warn(`library-index.js lists ${window.LIBRARY_PLAYS.length} plays but the ` +
+                 `library has ${PLAYS.length}. Regenerate it so the game log stays complete.`);
+  }
   initLayers();
   resetZoom();
   try {
