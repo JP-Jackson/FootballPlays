@@ -2,9 +2,21 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.3.0";
+export const VERSION = "1.4.0";
 
 export const RELEASES = [
+  {
+    version: "1.4.0",
+    date: "2026-08-20",
+    title: "The opponent plays back",
+    notes: [
+      "Pick what the other side runs, not just where they stand. The opponent list is now real calls — 5-3 Cover 3, Double A Blitz, Cover 1 Man — and they arrive with their rushes, drops and coverage already attached.",
+      "Hit Animate and the defence plays: linemen rush their gaps, linebackers drop to their hooks, corners bail to their deep thirds.",
+      "Against a man call, defenders chase their receiver the whole way. On Four Verticals a corner that used to stand still now closes from 7.7 yards to under 2.",
+      "If you draw a defence and call an offence that throws, the ball comes with it.",
+      "Changing the call replaces what the opponent was doing, so you always get the look you picked.",
+    ],
+  },
   {
     version: "1.3.0",
     date: "2026-08-20",

@@ -282,7 +282,7 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
         <label class="opt" for="field-style">Field
           <select id="field-style"></select>
         </label>
-        <label class="opt" for="opp-form">Opponent
+        <label class="opt" for="opp-form">Opponent runs
           <select id="opp-form"></select>
         </label>
         <button class="btn sm plain" id="btn-opp">Add opponent</button>
@@ -1405,15 +1405,34 @@ function drawPos(p){ return (S.anim && S.anim[p.id]) ? S.anim[p.id] : { x:p.x, y
 function opponentSide(){ return S.play.side === 'offense' ? 'defense' : 'offense'; }
 function opponents(){ return S.play ? S.play.players.filter(p => p.side !== S.play.side) : []; }
 
-function addOpponent(formKey){
+/* The opponent is a call, not just an alignment. Picking "5-3 Cover 3" puts
+   eleven defenders on the field *and* gives them their rushes, drops and
+   coverage, so hitting Animate runs your play against a defence that actually
+   plays. What it does not do is react: the defence runs the call it was given
+   whether you hand off or throw. That is deliberate — this is a chalkboard, and
+   a coach wants to show the look his kids will see, not a simulation that
+   guesses at pursuit and teaches them something untrue. */
+function addOpponent(callId){
   if (!S.play) return;
   removeOpponent();
   const side = opponentSide();
-  S.play.oppForm = formKey || DEFAULT_FORM[side];
-  S.play.players.push(...buildLineup(side, S.play.oppForm, S.play.n));
+  const def = PLAYS.find(c => c.id === callId && (c.side || 'offense') === side);
+
+  const built = def
+    ? buildPlay(def, S.play.n)
+    : { players: buildLineup(side, DEFAULT_FORM[side], S.play.n), ball:null, form:DEFAULT_FORM[side] };
+
+  S.play.oppPlay = def ? def.id : null;
+  S.play.oppForm = built.form || DEFAULT_FORM[side];
+  S.play.players.push(...built.players);
+
+  // If you are drawing a defence and the offence you called throws it, the ball
+  // belongs to them — adopt it, but never overwrite a ball you drew yourself.
+  if (built.ball && !S.play.ball) S.play.ball = built.ball;
+
   S.dirty = true;
   renderAll();
-  toast('Opponent added — drag them and give them assignments');
+  toast(def ? `Opponent is running ${def.name}` : 'Opponent added');
 }
 
 function removeOpponent(){
@@ -1421,19 +1440,33 @@ function removeOpponent(){
   const gone = new Set(opponents().map(p => p.id));
   if (!gone.size) return;
   S.play.players = S.play.players.filter(p => !gone.has(p.id));
+  S.play.oppPlay = null;
   if (S.selected && gone.has(S.selected)) S.selected = null;
   if (S.play.ball && gone.has(S.play.ball.from)) S.play.ball = null;
   S.dirty = true;
 }
 
+function opponentCalls(){
+  if (!S.play) return [];
+  const side = opponentSide();
+  return PLAYS.filter(c => (c.side || 'offense') === side && (c.min || 5) <= S.play.n);
+}
+
 function syncOpponentControls(){
   if (!S.play) return;
-  const side = opponentSide();
-  const forms = side === 'offense' ? OFF_FORMS : DEF_FORMS;
+  const calls = opponentCalls();
   const sel = $('opp-form');
-  const want = S.play.oppForm && forms[S.play.oppForm] ? S.play.oppForm : DEFAULT_FORM[side];
-  sel.innerHTML = Object.entries(forms)
-    .map(([k, f]) => `<option value="${k}" ${k === want ? 'selected' : ''}>${esc(f.name)}</option>`).join('');
+  const want = calls.some(c => c.id === S.play.oppPlay) ? S.play.oppPlay
+             : (calls[0] && calls[0].id);
+
+  const families = [];
+  calls.forEach(c => { if (!families.includes(c.family)) families.push(c.family); });
+  sel.innerHTML = families.map(f =>
+    `<optgroup label="${esc(f)}">` +
+    calls.filter(c => c.family === f).map(c =>
+      `<option value="${esc(c.id)}"${c.id === want ? ' selected' : ''}>${esc(c.name)}</option>`
+    ).join('') + '</optgroup>').join('');
+
   $('btn-opp').textContent = opponents().length ? 'Remove opponent' : 'Add opponent';
 }
 
