@@ -142,11 +142,65 @@ keyed the right way.
 Not a factor at this size. Workers and D1 free tiers cover hundreds of teams;
 paid Workers is $5/month. The real costs are payment fees and your time.
 
-## 8. Open questions
+## 8. Can one person coach more than one team?
 
-- Does a coach ever need more than one team — separate age groups, or a JV and
-  varsity squad? Today a user belongs to exactly one team. Two teams means a
-  membership table, and that *is* worth knowing before signup is built.
+**Settle this before signup is built.** It is the only open question that changes
+the shape of the data, and it gets more expensive with every account created.
+
+Today a user belongs to exactly one team, because team is a single column:
+
+```sql
+users.team  TEXT NOT NULL      -- one team, forever
+users.role  TEXT NOT NULL      -- and one role, everywhere
+```
+
+That holds up fine for one man coaching one squad. It breaks the moment someone
+runs a JV and a varsity, coaches two age groups, or helps out with another
+team's staff — all of which are ordinary in youth football. It also breaks a
+plausible business case: a league buying several teams at once.
+
+Supporting it means membership becomes its own table, and **role moves onto the
+membership rather than the person**:
+
+```sql
+CREATE TABLE memberships (
+  user_id    TEXT NOT NULL,
+  team       TEXT NOT NULL,
+  role       TEXT NOT NULL,      -- owner | coach, per team
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, team)
+);
+```
+
+That second part is the real consequence. Someone can be the **owner** of the
+team he pays for and merely a **coach** on a friend's — so "what is this person
+allowed to do" stops being a property of the user and becomes a question about a
+user *and* a team. Every scope check changes shape, the session has to carry a
+current team, and the interface needs somewhere to switch between them.
+
+Three knock-on effects worth naming now:
+
+- **Billing follows the team, not the person.** A coach on two teams may be
+  paying for one and a guest on the other. The subscription already keys on team,
+  which is fortunate — it means this stays true without rework.
+- **The session gains a current team.** `readSession` returns one user today;
+  it would return a user plus their memberships plus whichever team they are
+  looking at.
+- **Plays already scope correctly.** `plays.team` needs no change at all. The
+  work is entirely in identity, not in content.
+
+**Cost of deciding late:** every existing account has to be migrated into the new
+table, every scope check rewritten, and any customer who signed up expecting one
+team has to be told how the interface now works. Cheap at two users. Not cheap at
+two hundred.
+
+**Recommendation:** do not build it now, but ask Josh whether he or anyone on his
+staff helps with a second squad. One honest answer settles it. If the answer is
+yes, build `memberships` at the same time as signup — retrofitting identity is
+the one piece of this that genuinely hurts.
+
+## 9. Other open questions
+
 - Season-based or monthly billing? Football is seasonal; a yearly charge in
   August may fit better than twelve monthly ones.
 - Does the free tier need the export/print features, or are those the paid hook?
