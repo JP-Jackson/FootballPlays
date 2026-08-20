@@ -2,9 +2,21 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.5.1";
+export const VERSION = "1.6.0";
 
 export const RELEASES = [
+  {
+    version: "1.6.0",
+    date: "2026-08-20",
+    title: "Pinch to zoom in on the play",
+    notes: [
+      "Pinch with two fingers to zoom into any part of the field, and drag with two fingers to move around while zoomed. Useful for showing one kid his footwork without everyone else in the way.",
+      "One finger still does what it always did — drag a player, drop a waypoint — so zooming never costs you the ability to draw.",
+      "Double tap, or the ⤢ button that appears once you are zoomed, returns you to the whole field.",
+      "On a laptop, pinch on the trackpad or hold Ctrl and scroll. A plain scroll still scrolls the page.",
+      "Zooming is only ever what you see. Exported images, printed sheets and the saved play are always the full field.",
+    ],
+  },
   {
     version: "1.5.1",
     date: "2026-08-20",

@@ -416,6 +416,7 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
           <option value="2">2×</option>
         </select>
         <span class="tp-time" id="tp-time">0.0s</span>
+        <button class="tp-btn" id="tp-zoom" aria-label="Reset zoom" title="Reset zoom" style="display:none">⤢</button>
         <button class="tp-btn" id="tp-full" aria-label="Full screen" title="Full screen">⛶</button>
       </div>
       <p class="turn-hint">Turn your phone sideways for a bigger field</p>
@@ -565,6 +566,45 @@ const HASH    = 17.78;       // high-school hash marks, yards from each sideline
 const VX = 120, VW = 1360;                       // fixed horizontal window
 let   VY = 300, VH = 750;                        // vertical window, fitted per play
 const PAD_TOP = 136, PAD_BOT = 120;              // title band above, legend below
+
+/* Pinch zoom. The fitted window (VX/VY/VW/VH) stays the source of truth for
+   what a play looks like — export, print and the saved diagram all use it
+   untouched. Zoom is a lens laid over the top of it and lives only on screen. */
+const ZOOM = { z:1, x:0, y:0 };
+const ZOOM_MAX = 6;
+const baseBox = () => ({ x:VX, y:VY - PAD_TOP, w:VW, h:VH + PAD_TOP + PAD_BOT });
+
+function applyZoom(){
+  const b = baseBox();
+  const w = b.w / ZOOM.z, h = b.h / ZOOM.z;
+  // Never let the field be dragged off the edge of its own frame.
+  ZOOM.x = Math.max(b.x, Math.min(b.x + b.w - w, ZOOM.x));
+  ZOOM.y = Math.max(b.y, Math.min(b.y + b.h - h, ZOOM.y));
+  svg.setAttribute('viewBox', `${ZOOM.x} ${ZOOM.y} ${w} ${h}`);
+  const btn = $('tp-zoom');
+  if (btn) btn.style.display = ZOOM.z > 1.01 ? 'grid' : 'none';
+}
+
+function resetZoom(){
+  const b = baseBox();
+  ZOOM.z = 1; ZOOM.x = b.x; ZOOM.y = b.y;
+  applyZoom();
+}
+
+/** Zoom about a fixed point, so whatever is under your fingers stays there. */
+function zoomAbout(userPt, factor){
+  const b = baseBox();
+  const next = Math.max(1, Math.min(ZOOM_MAX, ZOOM.z * factor));
+  if (next === ZOOM.z) return;
+  const wBefore = b.w / ZOOM.z, wAfter = b.w / next;
+  const hBefore = b.h / ZOOM.z, hAfter = b.h / next;
+  // keep userPt at the same fraction across the viewport
+  const fx = (userPt.x - ZOOM.x) / wBefore, fy2 = (userPt.y - ZOOM.y) / hBefore;
+  ZOOM.z = next;
+  ZOOM.x = userPt.x - fx * wAfter;
+  ZOOM.y = userPt.y - fy2 * hAfter;
+  applyZoom();
+}
 const TOP_LIMIT = 210, BOT_LIMIT = 1050;         // +19 to -9 yards: the deepest we ever go
 const MIN_TOP   = 540, MIN_BOT   = 960;          // always show +8 downfield and -6 back
 
@@ -1800,7 +1840,7 @@ function fitView(grow){
   if (grow){ top = Math.min(top, VY); bot = Math.max(bot, VY + VH); }
   if (Math.abs(top - VY) < 1 && Math.abs(bot - (VY + VH)) < 1) return false;
   VY = top; VH = bot - top;
-  svg.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
+  resetZoom();
   drawTurf();
   return true;
 }
@@ -2046,7 +2086,48 @@ const clampY = y => Math.max(TOP_LIMIT + R, Math.min(BOT_LIMIT - R, y));
 
 let drag = null;
 
+/* Two fingers always mean the view, never a player. One finger keeps doing
+   exactly what it did before — drag a man, drop a waypoint, deselect — so
+   zooming never costs you the ability to draw. */
+const touches = new Map();
+let pinch = null;
+
+const midpoint = pts => ({
+  x:(pts[0].x + pts[1].x) / 2, y:(pts[0].y + pts[1].y) / 2,
+});
+const spread = pts => Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+
+function beginPinch(){
+  const pts = [...touches.values()];
+  // Abandon any half-started player drag: the second finger reinterprets it.
+  drag = null;
+  pinch = { dist:spread(pts), mid:midpoint(pts), z:ZOOM.z, x:ZOOM.x, y:ZOOM.y };
+}
+
+function updatePinch(){
+  const pts = [...touches.values()];
+  if (!pinch || pts.length < 2) return;
+  const b = baseBox();
+  const scale = spread(pts) / (pinch.dist || 1);
+  const z = Math.max(1, Math.min(ZOOM_MAX, pinch.z * scale));
+  const wAt = zz => b.w / zz, hAt = zz => b.h / zz;
+
+  // Where the original midpoint sat in the view when the gesture began …
+  const fx = (pinch.mid.x - pinch.x) / wAt(pinch.z);
+  const fy2 = (pinch.mid.y - pinch.y) / hAt(pinch.z);
+  // … and where the fingers are now. Both pinch and drag fall out of this.
+  const now = midpoint(pts);
+  ZOOM.z = z;
+  ZOOM.x = now.x - fx * wAt(z);
+  ZOOM.y = now.y - fy2 * hAt(z);
+  applyZoom();
+}
+
 svg.addEventListener('pointerdown', e => {
+  touches.set(e.pointerId, toField(e));
+  if (touches.size === 2){ beginPinch(); e.preventDefault(); return; }
+  if (touches.size > 2) return;
+
   if (S.anim) return;
   const pos = toField(e);
 
@@ -2081,6 +2162,12 @@ svg.addEventListener('pointerdown', e => {
 });
 
 svg.addEventListener('pointermove', e => {
+  if (touches.has(e.pointerId) && touches.size >= 2){
+    touches.set(e.pointerId, toField(e));
+    updatePinch();
+    e.preventDefault();
+    return;
+  }
   if (!drag) return;
   const pos = toField(e);
   if (drag.kind === 'player'){
@@ -2104,6 +2191,8 @@ svg.addEventListener('pointermove', e => {
 });
 
 function endDrag(e){
+  touches.delete(e.pointerId);
+  if (touches.size < 2) pinch = null;
   if (!drag) return;
   drag = null;
   try { svg.releasePointerCapture(e.pointerId); } catch (_){}
@@ -2893,6 +2982,18 @@ function toggleFull(){
   if (S.anim) renderAt(A.t);
 }
 $('tp-full').addEventListener('click', toggleFull);
+$('tp-zoom').addEventListener('click', resetZoom);
+
+// Trackpad pinch arrives as ctrl+wheel. A plain wheel is left alone so the page
+// still scrolls when the pointer happens to be over the field.
+svg.addEventListener('wheel', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  zoomAbout(toField(e), e.deltaY < 0 ? 1.12 : 1 / 1.12);
+}, { passive:false });
+
+// Double tap or double click to get back to the whole field.
+svg.addEventListener('dblclick', e => { e.preventDefault(); resetZoom(); });
 
 /* ---- plays drawer, for phones ---- */
 const veil = document.createElement('div');
@@ -2942,7 +3043,7 @@ window.addEventListener('beforeunload', e => {
    --------------------------------------------------------------- */
 (async function boot(){
   initLayers();
-  svg.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
+  resetZoom();
   try {
     ME = await Shell.start('app');
     await loadStore();
