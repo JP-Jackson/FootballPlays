@@ -59,7 +59,10 @@
         })
       });
       var data = await res.json().catch(function(){ return {}; });
-      if (!res.ok) throw new Error(data.error || 'Could not create the account.');
+      if (!res.ok) throw new Error(
+        // `detail` carries the real reason on a 500; without it every
+        // failure reads the same and can't be diagnosed from the screen.
+        [data.error || 'Could not create the account.', data.detail].filter(Boolean).join(' — '));
       location.href = '/login';
     } catch (e2) {
       err.textContent = e2.message; err.classList.add('on');

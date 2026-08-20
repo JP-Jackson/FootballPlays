@@ -60,7 +60,10 @@
                                password: document.getElementById('p').value })
       });
       var data = await res.json().catch(function(){ return {}; });
-      if (!res.ok) throw new Error(data.error || 'That username and password don’t match.');
+      if (!res.ok) throw new Error(
+        // `detail` carries the real reason on a 500; without it every
+        // failure reads the same and can't be diagnosed from the screen.
+        [data.error || 'That username and password don’t match.', data.detail].filter(Boolean).join(' — '));
       location.href = next;
     } catch (e2) {
       err.textContent = e2.message;
