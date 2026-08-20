@@ -124,15 +124,17 @@ Sprint Out · Play Action Post
 
 ### Reading a diagram
 
-| Symbol | Means |
+| Line | Means |
 | --- | --- |
+| **Red** | The football. Wherever the ball goes — carried, handed off or thrown — the line is red, so you can trace its whole journey without reading a label. |
+| **Black** | A block. Ends in a cross bar rather than an arrow. |
+| **Blue, cross bar** | A pulling or trapping lineman — the key man in Power, Counter and Buck Sweep, so he gets his own colour. |
+| **Purple** | A pass route, or man coverage on defence. |
+| **Blue, dashed, ending in a circle** | A zone drop — the defender settles in that area rather than chasing anyone. |
+| **Grey, dashed** | A fake or decoy. |
+| **Amber, dashed** | Pre-snap motion. |
 | Circle | Offensive player |
 | Square | Defensive player |
-| Line ending in an arrow | That player moves there |
-| Line ending in a cross bar | A block |
-| Blue line | A pulling or trapping lineman |
-| Dashed line | A fake, pre-snap motion, or the ball in the air |
-| Dashed line ending in a circle | A zone drop — the defender settles in that area |
 
 Downfield is up. The thick line across the middle is the line of scrimmage.
 

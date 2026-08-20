@@ -29,6 +29,30 @@ button{font:inherit;cursor:pointer}
 input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
 
+.cp{margin-top:9px}
+.cp label{display:block;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px}
+.cp textarea{width:100%;border:1px solid #f2e0b8;background:#fff8e8;border-radius:8px;padding:9px 12px;
+  font-size:13px;line-height:1.5;color:#6b5320;resize:vertical;min-height:44px}
+.cp textarea::placeholder{color:#b3a184}
+.cp textarea:focus{background:#fff;border-color:#e0b45c}
+
+/* the play list: one row per play, with its own actions */
+.play-row{display:flex;align-items:stretch;gap:2px;border-radius:8px}
+.play-row:hover{background:#f1f5f9}
+.play-row.on{background:#eaf4ff;box-shadow:inset 0 0 0 1px #bcd9f5}
+.play-row .play-item{flex:1;min-width:0}
+.play-acts{display:flex;align-items:center;gap:1px;opacity:0;transition:opacity .12s}
+.play-row:hover .play-acts,.play-row.on .play-acts,.play-acts:focus-within{opacity:1}
+.play-acts button{border:0;background:transparent;color:var(--muted);width:26px;height:26px;
+  border-radius:6px;font-size:13px;line-height:1}
+.play-acts button:hover{background:#dde7f1;color:var(--ink)}
+.play-acts button.del:hover{background:#fdecec;color:var(--crimson-2)}
+
+/* drawing controls, shown in the inspector while a path is being drawn */
+.drawbox{border:1px solid #bfe3cd;background:#e9f6ee;border-radius:9px;padding:10px;margin-top:12px}
+.drawbox p{margin:0 0 8px;font-size:12.5px;color:#1d5c37;line-height:1.45}
+
 /* ---------- app action bar ---------- */
 .appbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0;max-width:1680px;margin:0 auto}
 
@@ -248,22 +272,25 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
       <div class="nmwrap">
         <input type="text" id="play-name" value="Play" aria-label="Play name">
         <div class="tags" id="play-tags"></div>
+        <div class="cp">
+          <label for="play-note">Coaching point</label>
+          <textarea id="play-note" rows="2"
+            placeholder="What do you want the kids to remember about this play?"></textarea>
+        </div>
       </div>
       <div class="hdr-opts">
         <label class="opt" for="field-style">Field
           <select id="field-style"></select>
         </label>
-        <label class="opt chk">
-          <input type="checkbox" id="chk-ghost"> Show opponent
+        <label class="opt" for="opp-form">Opponent
+          <select id="opp-form"></select>
         </label>
+        <button class="btn sm plain" id="btn-opp">Add opponent</button>
       </div>
     </div>
 
     <div class="hint" id="hint">
       <span id="hint-text"></span>
-      <span class="spacer"></span>
-      <button class="btn sm" id="hint-undo">Undo point</button>
-      <button class="btn sm primary" id="hint-done">Done</button>
     </div>
 
     <div class="field-wrap">
@@ -430,20 +457,34 @@ const fy = dy => LOS_Y - dy * U;
      dashed + circle    = a zone drop (defender settles in an area)
    --------------------------------------------------------------- */
 const TYPES = {
-  run:     { label:'Run (ball carrier)', color:'#12233d', w:7,  dash:null,     cap:'arrow',  side:'offense' },
-  route:   { label:'Pass route',         color:'#12233d', w:6,  dash:null,     cap:'arrow',  side:'offense' },
-  block:   { label:'Block',              color:'#12233d', w:6,  dash:null,     cap:'bar',    side:'offense' },
-  pull:    { label:'Pull / trap block',  color:'#2f6fb5', w:6,  dash:null,     cap:'bar',    side:'offense' },
-  fake:    { label:'Fake / decoy',       color:'#7b8aa0', w:5,  dash:'16 12',  cap:'arrow',  side:'offense' },
-  drop:    { label:'Quarterback drop',   color:'#4a5c73', w:5,  dash:null,     cap:'arrow',  side:'offense' },
-  motion:  { label:'Pre-snap motion',    color:'#e0902f', w:5,  dash:'4 12',   cap:'arrow',  side:'offense' },
-  handoff: { label:'Handoff / pitch',    color:'#12233d', w:5,  dash:'3 9',    cap:'arrow',  side:'offense' },
-  pass:    { label:'Ball in the air',    color:'#c47a12', w:5,  dash:'20 12',  cap:'arrow',  side:'both'    },
-  rush:    { label:'Rush the gap',       color:'#b3151f', w:7,  dash:null,     cap:'arrow',  side:'defense' },
-  blitz:   { label:'Blitz',              color:'#8d1018', w:9,  dash:null,     cap:'arrow',  side:'defense' },
-  man:     { label:'Man coverage',       color:'#b3151f', w:6,  dash:null,     cap:'arrow',  side:'defense' },
-  zone:    { label:'Zone drop',          color:'#b3151f', w:6,  dash:'16 11',  cap:'hook',   side:'defense' },
-  contain: { label:'Contain / force',    color:'#b3151f', w:6,  dash:null,     cap:'arrow',  side:'defense' }
+  // One idea drives the whole palette: RED IS THE BALL. Wherever the football
+  // goes — handed off, thrown, carried — the line is red, so a coach can trace
+  // its whole journey without reading a single label. Blocking is black.
+  // Everything else is a cool colour, because it is an assignment, not the ball.
+  run:     { label:'Run (ball carrier)', color:'#d81b1b', w:8,  dash:null,     cap:'arrow',  side:'offense' },
+  handoff: { label:'Handoff / pitch',    color:'#d81b1b', w:5,  dash:'3 9',    cap:'arrow',  side:'offense' },
+  pass:    { label:'Ball in the air',    color:'#d81b1b', w:5,  dash:'20 12',  cap:'arrow',  side:'both'    },
+
+  block:   { label:'Block',              color:'#101418', w:6,  dash:null,     cap:'bar',    side:'offense' },
+  // A pulling guard is the whole point of Power, Counter and Buck Sweep. In
+  // black he disappears among the other four linemen, so he gets his own
+  // colour while keeping the cross-bar that still marks him as a blocker.
+  pull:    { label:'Pull / trap block',  color:'#0b63ce', w:7,  dash:null,     cap:'bar',    side:'offense' },
+
+  route:   { label:'Pass route',         color:'#7a3ff2', w:6,  dash:null,     cap:'arrow',  side:'offense' },
+  drop:    { label:'Quarterback drop',   color:'#55637a', w:5,  dash:null,     cap:'arrow',  side:'offense' },
+  fake:    { label:'Fake / decoy',       color:'#9aa7b8', w:5,  dash:'16 12',  cap:'arrow',  side:'offense' },
+  motion:  { label:'Pre-snap motion',    color:'#f59e0b', w:5,  dash:'4 12',   cap:'arrow',  side:'offense' },
+
+  // Defence follows the same logic: red goes after the football, cool colours
+  // cover somebody or something.
+  rush:    { label:'Rush the gap',       color:'#c1121f', w:7,  dash:null,     cap:'arrow',  side:'defense' },
+  // A blitz is a rush with more of it behind — same red, visibly heavier.
+  // The near-black maroon this used to be vanished against green turf.
+  blitz:   { label:'Blitz',              color:'#c1121f', w:12, dash:null,     cap:'arrow',  side:'defense' },
+  contain: { label:'Contain / force',    color:'#e4572e', w:6,  dash:null,     cap:'arrow',  side:'defense' },
+  man:     { label:'Man coverage',       color:'#7a3ff2', w:6,  dash:null,     cap:'arrow',  side:'defense' },
+  zone:    { label:'Zone drop',          color:'#0b63ce', w:6,  dash:'16 11',  cap:'hook',   side:'defense' }
 };
 
 /* ---------------------------------------------------------------
@@ -1340,19 +1381,42 @@ function playerAt(id){ return S.play ? S.play.players.find(p => p.id === id) : n
 function drawPos(p){ return (S.anim && S.anim[p.id]) ? S.anim[p.id] : { x:p.x, y:p.y }; }
 
 /* faint opponent, so alignment makes sense on its own */
-function drawGhost(){
-  const g = L.ghost; g.textContent = '';
-  if (!S.ghost || !S.play) return;
-  const other = S.play.side === 'offense' ? 'defense' : 'offense';
-  buildLineup(other, DEFAULT_FORM[other], S.play.n).forEach(p => {
-    const c = other === 'offense' ? '#12233d' : '#b3151f';
-    if (other === 'offense')
-      el('circle',{ cx:p.x, cy:p.y, r:R-3, fill:'#ffffff', 'fill-opacity':.28,
-                    stroke:c, 'stroke-opacity':.42, 'stroke-width':4 }, g);
-    else
-      el('rect',{ x:p.x-R+4, y:p.y-R+4, width:(R-4)*2, height:(R-4)*2, rx:6,
-                  fill:'#ffffff','fill-opacity':.28, stroke:c,'stroke-opacity':.42,'stroke-width':4 }, g);
-  });
+/** The other side, as real players you can drag and give assignments to.
+ *  They live in play.players like everyone else — that is what makes them
+ *  draggable, assignable and animated, which a drawn-on ghost never was. */
+function opponentSide(){ return S.play.side === 'offense' ? 'defense' : 'offense'; }
+function opponents(){ return S.play ? S.play.players.filter(p => p.side !== S.play.side) : []; }
+
+function addOpponent(formKey){
+  if (!S.play) return;
+  removeOpponent();
+  const side = opponentSide();
+  S.play.oppForm = formKey || DEFAULT_FORM[side];
+  S.play.players.push(...buildLineup(side, S.play.oppForm, S.play.n));
+  S.dirty = true;
+  renderAll();
+  toast('Opponent added — drag them and give them assignments');
+}
+
+function removeOpponent(){
+  if (!S.play) return;
+  const gone = new Set(opponents().map(p => p.id));
+  if (!gone.size) return;
+  S.play.players = S.play.players.filter(p => !gone.has(p.id));
+  if (S.selected && gone.has(S.selected)) S.selected = null;
+  if (S.play.ball && gone.has(S.play.ball.from)) S.play.ball = null;
+  S.dirty = true;
+}
+
+function syncOpponentControls(){
+  if (!S.play) return;
+  const side = opponentSide();
+  const forms = side === 'offense' ? OFF_FORMS : DEF_FORMS;
+  const sel = $('opp-form');
+  const want = S.play.oppForm && forms[S.play.oppForm] ? S.play.oppForm : DEFAULT_FORM[side];
+  sel.innerHTML = Object.entries(forms)
+    .map(([k, f]) => `<option value="${k}" ${k === want ? 'selected' : ''}>${esc(f.name)}</option>`).join('');
+  $('btn-opp').textContent = opponents().length ? 'Remove opponent' : 'Add opponent';
 }
 
 function drawPaths(){
@@ -1479,7 +1543,7 @@ function fitView(grow){
   return true;
 }
 
-function renderField(){ drawGhost(); drawPaths(); drawPlayers(); drawHandles(); drawChrome(); }
+function renderField(){ drawPaths(); drawPlayers(); drawHandles(); drawChrome(); }
 
 /* ---------------------------------------------------------------
    10. SIDE PANELS
@@ -1506,9 +1570,17 @@ function renderPlayList(){
     list.forEach(p => {
       const on = S.play && S.play.id === p.id;
       const form = (p.side === 'offense' ? OFF_FORMS[p.form] : DEF_FORMS[p.form]);
-      html += `<button class="play-item" data-play="${esc(p.id)}" data-custom="${custom?1:0}" aria-current="${on}">
-        <div class="nm">${esc(p.name)}</div>
-        <div class="sub">${esc(form ? form.name : '')}</div></button>`;
+      const id = esc(p.id);
+      html += `<div class="play-row ${on ? 'on' : ''}">
+        <button class="play-item" data-play="${id}" data-custom="${custom?1:0}" aria-current="${on}">
+          <div class="nm">${esc(p.name)}</div>
+          <div class="sub">${esc(form ? form.name : '')}</div>
+        </button>
+        <div class="play-acts">
+          <button data-copy="${id}" data-custom="${custom?1:0}" title="Make a copy I can change">&#10697;</button>
+          ${custom ? `<button data-rename="${id}" title="Rename">&#9998;</button>
+                      <button class="del" data-del="${id}" title="Delete">&times;</button>` : ''}
+        </div></div>`;
     });
   };
 
@@ -1581,8 +1653,22 @@ function renderInspector(){
         <select id="insp-add">${types.map(t=>`<option value="${t}">${esc(TYPES[t].label)}</option>`).join('')}</select>
         <button class="btn sm primary" id="insp-add-btn">Add &amp; draw</button>
       </div>
-    </div>
-  </div>`;
+    </div>`;
+
+  // While a path is being drawn, put Undo and Done right here next to the
+  // assignment being drawn, rather than off in the middle of the page.
+  if (S.mode === 'draw'){
+    const list = currentDrawList();
+    const count = list ? list.length : 0;
+    html += `<div class="drawbox">
+      <p><b>Drawing.</b> Tap the field for each turn in the path.
+         ${count} point${count === 1 ? '' : 's'} so far.</p>
+      <div class="row2">
+        <button class="btn sm" style="background:#fff" id="insp-undo" ${count ? '' : 'disabled'}>Undo point</button>
+        <button class="btn sm primary" id="insp-done">Done</button>
+      </div></div>`;
+  }
+  html += `</div>`;
 
   if (p.side === 'offense'){
     const isBall = S.play.ball && S.play.ball.from === p.id;
@@ -1609,25 +1695,25 @@ function renderHeader(){
     (form ? `<span class="tag">${esc(form.name)}</span>` : '') +
     (S.play.custom ? '<span class="tag">my play</span>' : '');
 
-  let note = document.querySelector('.stage .note');
-  const text = S.play.note || (form ? form.blurb : '');
-  if (text){
-    if (!note){
-      note = document.createElement('div');
-      note.className = 'note';
-      $('hint').parentNode.insertBefore(note, $('hint'));
-    }
-    note.innerHTML = `<b>Coaching point.</b> ${esc(text)}`;
-  } else if (note) note.remove();
+  // Don't fight the coach's cursor: only refresh the box when it isn't focused.
+  const noteEl = $('play-note');
+  if (document.activeElement !== noteEl){
+    noteEl.value = S.play.note || '';
+    noteEl.placeholder = (form && form.blurb)
+      ? form.blurb
+      : 'What do you want the kids to remember about this play?';
+  }
 
   $('btn-delete').disabled = !S.play.custom;
 }
 
 function renderLegendPanel(){
   const box = $('legend');
+  // Once an opponent is on the field, both sides' line types belong here.
+  const sides = new Set(S.play ? S.play.players.map(p => p.side) : ['offense']);
   const keys = Object.keys(TYPES).filter(t => {
     const s = TYPES[t].side;
-    return s === 'both' || !S.play || s === S.play.side;
+    return s === 'both' || !S.play || sides.has(s);
   });
   box.innerHTML = keys.map(t => {
     const T = TYPES[t];
@@ -1642,7 +1728,7 @@ function renderLegendPanel(){
 }
 
 function renderAll(){
-  renderPlayList(); renderHeader(); renderInspector(); renderLegendPanel(); renderField();
+  renderPlayList(); renderHeader(); syncOpponentControls(); renderInspector(); renderLegendPanel(); renderField();
 }
 
 function toast(msg){
@@ -1785,11 +1871,12 @@ function addPoint(x, y){
   fitView(true);
   drawPaths(); drawHandles(); renderInspector();
 }
-$('hint-undo').onclick = () => {
+function undoDrawPoint(){
   const list = currentDrawList(); if (list && list.length) list.pop();
+  S.dirty = true;
   drawPaths(); drawHandles(); renderInspector();
-};
-$('hint-done').onclick = () => { setMode('select'); renderField(); renderInspector(); };
+}
+function finishDrawing(){ setMode('select'); renderField(); renderInspector(); }
 
 /* ---------------------------------------------------------------
    13. INSPECTOR ACTIONS
@@ -1827,6 +1914,8 @@ $('inspector').addEventListener('click', e => {
     S.dirty = true; renderInspector(); renderField();
     return;
   }
+  if (e.target.id === 'insp-undo'){ undoDrawPoint(); return; }
+  if (e.target.id === 'insp-done'){ finishDrawing(); return; }
   if (e.target.id === 'insp-clear'){
     p.asg = [];
     if (S.play.ball && S.play.ball.from === p.id) S.play.ball = null;
@@ -2019,16 +2108,8 @@ async function savePlay(){
   } finally { btn.disabled = false; }
 }
 
-async function deletePlay(){
-  if (!S.play || !S.play.custom) return;
-  if (!confirm(`Delete "${S.play.name}" from My Plays? This can't be undone.`)) return;
-  try {
-    await Shell.api('/api/plays/' + encodeURIComponent(S.play.id), { method:'DELETE' });
-    store.plays = store.plays.filter(p => p.id !== S.play.id);
-    S.dirty = false;
-    defaultPlayForSide();
-    toast('Play deleted');
-  } catch (e){ toast(e.message); }
+function deletePlay(){
+  if (S.play && S.play.custom) deletePlayById(S.play.id);
 }
 
 function resetPlay(){
@@ -2091,9 +2172,9 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){
     document.querySelectorAll('.modal.on').forEach(m => m.classList.remove('on'));
-    if (S.mode === 'draw'){ setMode('select'); renderField(); renderInspector(); }
+    if (S.mode === 'draw'){ finishDrawing(); }
   }
-  if (e.key === 'Enter' && S.mode === 'draw'){ setMode('select'); renderField(); renderInspector(); }
+  if (e.key === 'Enter' && S.mode === 'draw'){ finishDrawing(); }
 });
 
 /* ---- roster ---- */
@@ -2235,7 +2316,66 @@ $('count-range').addEventListener('change', () => {
   else defaultPlayForSide();
 });
 $('search').addEventListener('input', renderPlayList);
+/** A copy always lands in My Plays, whether it came from the library or not. */
+async function copyPlay(id, fromCustom){
+  let src;
+  if (fromCustom) src = store.plays.find(p => p.id === id);
+  else {
+    const def = PLAYS.find(p => p.id === id);
+    src = def && buildPlay(def, S.n);
+  }
+  if (!src) return;
+  const names = new Set(store.plays.map(p => p.name));
+  let name = `${src.name} (copy)`;
+  for (let i = 2; names.has(name); i++) name = `${src.name} (copy ${i})`;
+  try {
+    const res = await Shell.api('/api/plays', { method:'POST', body:{
+      name, side:src.side, n:src.n, form:src.form, note:src.note || '',
+      players:src.players, ball:src.ball ?? null,
+    } });
+    store.plays.unshift(res.play);
+    loadPlay(JSON.parse(JSON.stringify(res.play)));
+    toast(`Copied to My Plays as "${name}"`);
+  } catch (err){ toast(err.message); }
+}
+
+async function renamePlay(id){
+  const p = store.plays.find(x => x.id === id); if (!p) return;
+  const name = (prompt('Name for this play:', p.name) || '').trim();
+  if (!name || name === p.name) return;
+  try {
+    const res = await Shell.api('/api/plays/' + encodeURIComponent(id), { method:'PUT', body:{
+      name, side:p.side, n:p.n, form:p.form, note:p.note || '',
+      players:p.players, ball:p.ball ?? null,
+    } });
+    const at = store.plays.findIndex(x => x.id === id);
+    if (at >= 0) store.plays[at] = res.play;
+    if (S.play && S.play.id === id){ S.play.name = name; baseline = JSON.stringify(S.play); }
+    renderAll();
+    toast('Renamed');
+  } catch (err){ toast(err.message); }
+}
+
+async function deletePlayById(id){
+  const p = store.plays.find(x => x.id === id); if (!p) return;
+  if (!confirm(`Delete "${p.name}" from My Plays? This can't be undone.`)) return;
+  try {
+    await Shell.api('/api/plays/' + encodeURIComponent(id), { method:'DELETE' });
+    store.plays = store.plays.filter(x => x.id !== id);
+    if (S.play && S.play.id === id){ S.dirty = false; defaultPlayForSide(); }
+    else renderAll();
+    toast('Play deleted');
+  } catch (err){ toast(err.message); }
+}
+
 $('play-list').addEventListener('click', e => {
+  const copy = e.target.closest('[data-copy]');
+  if (copy) return copyPlay(copy.getAttribute('data-copy'), copy.getAttribute('data-custom') === '1');
+  const ren = e.target.closest('[data-rename]');
+  if (ren) return renamePlay(ren.getAttribute('data-rename'));
+  const del = e.target.closest('[data-del]');
+  if (del) return deletePlayById(del.getAttribute('data-del'));
+
   const b = e.target.closest('[data-play]'); if (!b) return;
   if (S.dirty && !confirm('You have unsaved changes on this play. Leave them behind?')) return;
   if (b.getAttribute('data-custom') === '1') loadCustom(b.getAttribute('data-play'));
@@ -2243,6 +2383,9 @@ $('play-list').addEventListener('click', e => {
 });
 $('play-name').addEventListener('input', e => {
   if (S.play){ S.play.name = e.target.value; S.dirty = true; drawChrome(); }
+});
+$('play-note').addEventListener('input', e => {
+  if (S.play){ S.play.note = e.target.value; S.dirty = true; }
 });
 $('field-style').innerHTML = Object.entries(FIELD_STYLES)
   .map(([k, f]) => `<option value="${k}">${esc(f.name)}</option>`).join('');
@@ -2253,7 +2396,13 @@ $('field-style').addEventListener('change', e => {
   $('field-style').title = theme().hint;
   saveStore(); drawTurf(); renderField();
 });
-$('chk-ghost').addEventListener('change', e => { S.ghost = e.target.checked; drawGhost(); });
+$('btn-opp').addEventListener('click', () => {
+  if (opponents().length){ removeOpponent(); renderAll(); toast('Opponent removed'); }
+  else addOpponent($('opp-form').value);
+});
+$('opp-form').addEventListener('change', e => {
+  if (opponents().length) addOpponent(e.target.value);   // reshape who's already out there
+});
 $('btn-animate').onclick  = runAnim;
 $('btn-reset').onclick    = resetPlay;
 $('btn-save').onclick     = savePlay;
