@@ -11,23 +11,28 @@ Built for Josh Bujnoch's peewee team.
 
 Everything below is a one-time setup. After that, `npm run deploy` is the whole loop.
 
+The `football-plays` D1 database already exists and its tables are built, and its id
+is already in `wrangler.jsonc`. Two commands stand between the repo and a live site:
+
 ```bash
 npm install
 
-# 1. Create the database, then paste the id it prints into wrangler.jsonc
-#    (replace PLACEHOLDER_RUN_WRANGLER_D1_CREATE)
-npx wrangler d1 create football-plays
+# The one secret it can't run without: signs the login cookies.
+# Any long random string; this generates one and pipes it straight in.
+node -e "console.log(crypto.randomUUID()+crypto.randomUUID())" | npx wrangler secret put SESSION_SECRET
 
-# 2. Build the tables
-npm run db:remote
-
-# 3. Secrets. SESSION_SECRET signs the login cookies — any long random string.
-node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"   # generates one
-npx wrangler secret put SESSION_SECRET
-npx wrangler secret put RESEND_API_KEY      # optional; without it feedback still saves
-
-# 4. Ship it
 npm run deploy
+```
+
+If wrangler asks you to sign in, `npx wrangler login` opens a browser — no API token
+needed. It's stored per machine, so a machine that has deployed any Worker before is
+already authenticated.
+
+Optional, any time later — turns feedback email on. Without it, feedback still saves
+and still shows up in the admin screen:
+
+```bash
+npx wrangler secret put RESEND_API_KEY
 ```
 
 Then open **https://footballplays.jpsapps.com** and you'll land on a one-time setup page
