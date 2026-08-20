@@ -2,9 +2,24 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.4.0";
+export const VERSION = "1.5.0";
 
 export const RELEASES = [
+  {
+    version: "1.5.0",
+    date: "2026-08-20",
+    title: "Built for the sideline",
+    notes: [
+      "The animation is a proper transport now: play, pause, and a bar you can drag to any moment in the play. Stop on the mesh point, talk about it, then carry on.",
+      "Speed control — quarter, half, normal or double. Quarter speed stretches a play to nearly twelve seconds, which is about right for a seven-year-old following a pulling guard.",
+      "A full-screen button gives the whole screen to the field. It works on iPhone, where the browser's own full-screen mode does not.",
+      "The speed you pick is remembered on your device.",
+      "Space bar plays and pauses. Escape leaves full screen.",
+      "On a phone, the plays open in a slide-out menu instead of living a screen and a half down the page.",
+      "Copy, rename and delete on a play only appeared when you hovered a mouse over it, so on a phone they could not be reached at all. They are always visible on touch now.",
+      "Buttons, sliders and dropdowns are finger-sized on touch, and the toolbars scroll sideways rather than stacking up and pushing the field off the screen. The field now sits 411 pixels up the page instead of 588.",
+    ],
+  },
   {
     version: "1.4.0",
     date: "2026-08-20",

@@ -53,6 +53,60 @@ h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
 .drawbox{border:1px solid #bfe3cd;background:#e9f6ee;border-radius:9px;padding:10px;margin-top:12px}
 .drawbox p{margin:0 0 8px;font-size:12.5px;color:#1d5c37;line-height:1.45}
 
+/* ---------- animation transport ---------- */
+.field-wrap{position:relative}
+.transport{
+  display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 9px;
+  background:#eef2f7;border-radius:9px;
+}
+.tp-btn{
+  flex:none;width:40px;height:40px;border:0;border-radius:9px;
+  background:var(--navy);color:#fff;font-size:15px;line-height:1;
+  display:grid;place-items:center;
+}
+.tp-btn:hover{background:var(--navy-2)}
+#tp-scrub{
+  flex:1;min-width:0;height:34px;accent-color:var(--turf-lt);background:transparent;
+  border:0;padding:0;
+}
+.tp-speed{
+  flex:none;width:auto;min-width:62px;height:40px;padding:0 6px;
+  border:1px solid #dbe3ec;border-radius:9px;background:#fff;
+  font-size:13px;font-weight:700;
+}
+.field-wrap.is-full .tp-speed{background:rgba(255,255,255,.92)}
+.tp-time{
+  font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;
+  min-width:64px;text-align:right;white-space:nowrap;
+}
+/* Full screen is an ordinary fixed overlay rather than the Fullscreen API,
+   because iOS Safari only grants that to <video> — on a phone, the one place
+   this matters most, requestFullscreen simply does nothing. The native call is
+   still made where it works, as a bonus. */
+.field-wrap.is-full{
+  position:fixed;inset:0;z-index:300;margin:0;border-radius:0;
+  background:#0d1b2a;display:flex;flex-direction:column;justify-content:center;
+  padding:10px;
+}
+.field-wrap.is-full #field{flex:1;min-height:0;width:100%;height:100%}
+/* A play is wider than it is tall, so on a phone held upright it can only ever
+   fill about a third of the screen. Rather than pretend otherwise, say so. */
+.turn-hint{display:none;color:#9fb4cd;font-size:13px;text-align:center;padding:6px 0 0}
+.field-wrap.is-full .turn-hint{display:none}
+@media (orientation:portrait) and (max-width:820px){
+  .field-wrap.is-full .turn-hint{display:block}
+}
+.field-wrap.is-full .transport{background:rgba(255,255,255,.12)}
+.field-wrap.is-full .tp-speed{
+  flex:none;width:auto;min-width:62px;height:40px;padding:0 6px;
+  border:1px solid #dbe3ec;border-radius:9px;background:#fff;
+  font-size:13px;font-weight:700;
+}
+.field-wrap.is-full .tp-speed{background:rgba(255,255,255,.92)}
+.tp-time{color:#cfe0f0}
+body.is-full-open{overflow:hidden}
+.only-mobile{display:none}
+
 /* ---------- app action bar ---------- */
 .appbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0;max-width:1680px;margin:0 auto}
 
@@ -205,6 +259,58 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
   .panel-right.sidebar{position:static;max-height:none}
 }
 @media (max-width:820px){
+  /* Fingers, not cursors: every control gets a real touch target. */
+  .btn{padding:11px 14px;font-size:14px;min-height:44px}
+  .btn.sm{padding:8px 11px;min-height:38px}
+  .tp-btn{width:46px;height:46px;font-size:17px}
+  .tp-speed{height:46px;min-width:68px;font-size:14px}
+  #tp-scrub{height:44px}
+  .only-mobile{display:inline-flex;align-items:center}
+
+  /* The header was eating a third of the screen before the field appeared. */
+  .topbar{padding:7px 11px;gap:8px}
+  .topbar .btn{padding:8px 11px;font-size:13px;min-height:38px}
+  .brand img{width:30px;height:30px}
+  .brand h1{font-size:15px}
+  .who{display:none}
+
+  /* The coaching point stays out of the way until you tap into it. */
+  #play-note{max-height:46px;transition:max-height .18s ease}
+  #play-note:focus{max-height:220px}
+
+  /* Toolbars scroll sideways rather than stacking into three rows and pushing
+     the field off the bottom of the screen. */
+  .appbar, .toolbar, .hdr-opts{
+    flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .appbar::-webkit-scrollbar, .toolbar::-webkit-scrollbar, .hdr-opts::-webkit-scrollbar{display:none}
+  .appbar > *, .toolbar > *, .hdr-opts > *{flex:none}
+  .tb-actions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .tb-actions::-webkit-scrollbar{display:none}
+  /* The play already names its formation in the diagram itself. */
+  .tags{display:none}
+
+  /* Real touch targets on the things that were still cursor-sized. */
+  #play-name, select, input[type=text], input[type=password], input[type=email]{min-height:44px}
+  .play-item, .play-row{min-height:48px}
+  /* These reveal on hover, which a finger never does — on touch they were
+     simply unreachable, so copy, rename and delete are always visible here. */
+  .play-acts{opacity:1}
+  .play-acts button{width:36px;height:36px}
+
+  /* Plays slide in over the field instead of living a screen and a half down. */
+  .panel-left{
+    position:fixed;top:0;left:0;bottom:0;width:min(310px,86vw);z-index:200;
+    border-radius:0;transform:translateX(-102%);transition:transform .22s ease;
+    max-height:none;overflow:auto;box-shadow:0 0 40px rgba(0,0,0,.35);
+  }
+  .panel-left.open{transform:translateX(0)}
+  .drawer-veil{
+    position:fixed;inset:0;background:rgba(12,24,38,.5);z-index:199;display:none;
+  }
+  .drawer-veil.on{display:block}
+
   .layout{grid-template-columns:minmax(0,1fr);padding:10px;gap:10px}
   .panel-left{order:2}
   .stage{order:1}
@@ -234,6 +340,7 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
 
 <header class="topbar"></header>
 <div class="appbar">
+  <button class="btn primary only-mobile" id="btn-plays">☰ Plays</button>
   <button class="btn primary" id="btn-new">+ New Play</button>
   <button class="btn plain" id="btn-roster">Roster</button>
   <button class="btn plain" id="btn-download">Backup</button>
@@ -293,12 +400,25 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
       <span id="hint-text"></span>
     </div>
 
-    <div class="field-wrap">
+    <div class="field-wrap" id="stage-field">
       <svg id="field" xmlns="http://www.w3.org/2000/svg" viewBox="120 44 1360 1156" role="img" aria-label="Football play diagram"></svg>
+      <div class="transport" id="transport">
+        <button class="tp-btn" id="tp-play" aria-label="Play the animation">▶</button>
+        <input type="range" id="tp-scrub" min="0" max="1000" value="0" step="1"
+               aria-label="Scrub through the play">
+        <select class="tp-speed" id="tp-speed" aria-label="Animation speed" title="Animation speed">
+          <option value="0.25">¼×</option>
+          <option value="0.5">½×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+        </select>
+        <span class="tp-time" id="tp-time">0.0s</span>
+        <button class="tp-btn" id="tp-full" aria-label="Full screen" title="Full screen">⛶</button>
+      </div>
+      <p class="turn-hint">Turn your phone sideways for a bigger field</p>
     </div>
 
     <div class="panel toolbar">
-      <button class="btn primary" id="btn-animate">▶ Animate</button>
       <button class="btn" id="btn-reset" style="background:#eef2f7">Reset play</button>
       <button class="btn" id="btn-save" style="background:#eef2f7">Save to My Plays</button>
       <button class="btn" id="btn-png" style="background:#eef2f7">Export PNG</button>
@@ -1356,7 +1476,7 @@ let S = {
   selected:null,          // player id
   mode:'select',          // 'select' | 'draw'
   drawTarget:null,        // { playerId, asgIndex }
-  anim:null, animRAF:0, dirty:false
+  anim:null, dirty:false
 };
 
 /** Pull the team's playbook and roster off the server. */
@@ -1370,11 +1490,12 @@ async function loadStore(){
   try {
     const pref = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
     if (FIELD_STYLES[pref.fieldStyle]) store.fieldStyle = pref.fieldStyle;
+    if (pref.speed > 0) A.speed = pref.speed;
   } catch (e){ /* a bad pref is not worth failing over */ }
 }
 
 function savePrefs(){
-  try { localStorage.setItem(PREF_KEY, JSON.stringify({ fieldStyle: store.fieldStyle })); }
+  try { localStorage.setItem(PREF_KEY, JSON.stringify({ fieldStyle: store.fieldStyle, speed: A.speed })); }
   catch (e){ /* private browsing; the app still works, it just forgets the style */ }
 }
 
@@ -1681,7 +1802,8 @@ function fitView(grow){
   return true;
 }
 
-function renderField(){ drawPaths(); drawPlayers(); drawHandles(); drawChrome(); }
+function renderField(){
+  invalidateAnim(); drawPaths(); drawPlayers(); drawHandles(); drawChrome(); }
 
 /* ---------------------------------------------------------------
    10. SIDE PANELS
@@ -2083,12 +2205,6 @@ function pathOf(p){
   p.asg.forEach(a => a.pts.forEach(pt => pts.push({ x:pt.x, y:pt.y })));
   return pts;
 }
-function stopAnim(){
-  cancelAnimationFrame(S.animRAF);
-  S.anim = null; S.animRAF = 0;
-  $('btn-animate').textContent = '▶ Animate';
-  if (S.play) renderField();
-}
 /* Some lines end ON A PERSON rather than on a spot: a pass ends at the
    receiver, man coverage ends at the man. Drawn on a still field they look the
    same as any other line, but the moment everyone moves the difference matters —
@@ -2180,67 +2296,127 @@ function coverSpot(target, defenderStart){
   return { x: target.x + dx / len * gap, y: target.y + dy / len * gap };
 }
 
-function runAnim(){
-  if (!S.play) return;
-  if (S.anim){ stopAnim(); return; }
+/* The animation is a transport, not a one-shot: a coach wants to stop on the
+   mesh point and talk, then step forward a beat. Position in the play is a
+   single number, 0 to 1, and everything — play, pause, the scrub bar — just
+   moves that number. Nothing else needs to know which of them did it. */
+const A = { t:0, playing:false, raf:0, last:0, data:null, speed:1 };
 
-  // A defender in man coverage goes where his man goes. Zone deliberately does
-  // not — a zone defender is responsible for grass, not for a person.
+/* Speed changes how long the play takes to watch, nothing about the play
+   itself. Quarter speed is the one that earns its keep — a seven-year-old
+   following a pulling guard needs it slow. */
+const playSeconds = () => DURATION / A.speed / 1000;
+
+/** Worked out once per play rather than per frame: who follows whom, and where
+ *  the ball is going. Cleared whenever the play changes underneath it. */
+function animData(){
   const marks = assignCoverage();
   const tracks = S.play.players.map(p => ({
     id:p.id, pts:pathOf(p), follow: marks.get(p.id) || null, start:{ x:p.x, y:p.y },
   })).filter(t => t.pts.length > 1 || t.follow);
 
   const flight = ballFlight();
-  const ballSrc = flight && flight.src;
-  const ballPts = flight ? [{ x:ballSrc.x, y:ballSrc.y }, ...flight.pts] : null;
-  const receiver = flight && flight.target;
+  return {
+    tracks,
+    ballSrc: flight && flight.src,
+    ballPts: flight ? [{ x:flight.src.x, y:flight.src.y }, ...flight.pts] : null,
+    receiver: flight && flight.target,
+    any: tracks.length > 0 || !!flight,
+  };
+}
+function invalidateAnim(){ A.data = null; }
 
-  if (!tracks.length && !ballPts){
-    toast('Nothing to animate yet — give someone an assignment');
+function renderAt(t){
+  if (!S.play) return;
+  const d = A.data || (A.data = animData());
+
+  // Back at the start with nothing running, the play is simply itself again —
+  // full-strength lines, draggable players.
+  if (t <= 0 && !A.playing){
+    S.anim = null;
+    renderField();
     return;
   }
 
-  $('btn-animate').textContent = '■ Stop';
-  S.selected = null;
-  const t0 = performance.now();
+  const e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;   // ease in/out
+  S.anim = {};
+  d.tracks.forEach(tr => { if (!tr.follow) S.anim[tr.id] = pointAt(tr.pts, e); });
+  d.tracks.forEach(tr => {
+    if (!tr.follow) return;
+    const mark = S.anim[tr.follow] || (playerAt(tr.follow) || tr.start);
+    const pts = tr.pts.slice();
+    pts[pts.length - 1] = coverSpot(mark, tr.start);
+    S.anim[tr.id] = pointAt(pts, e);
+  });
 
-  const tick = now => {
-    const raw = Math.min(1, (now - t0) / DURATION);
-    const e   = raw < .5 ? 2*raw*raw : 1 - Math.pow(-2*raw + 2, 2)/2;   // ease in/out
-    S.anim = {};
+  drawPaths(); drawPlayers(); drawHandles();
 
-    // Anyone who moves under their own steam first, so that the players who
-    // chase them have somewhere current to chase to.
-    tracks.forEach(t => { if (!t.follow) S.anim[t.id] = pointAt(t.pts, e); });
-    tracks.forEach(t => {
-      if (!t.follow) return;
-      const mark = S.anim[t.follow] || (playerAt(t.follow) || t.start);
-      const pts = t.pts.slice();
-      pts[pts.length - 1] = coverSpot(mark, t.start);
-      S.anim[t.id] = pointAt(pts, e);
-    });
-
-    drawPaths(); drawPlayers();
-
-    if (ballPts){
-      const bf = Math.max(0, Math.min(1, (raw - .45) / .4));
-      if (bf > 0){
-        const flight = ballPts.slice();
-        // Thrown from wherever the passer has dropped back to, and caught
-        // wherever the receiver has got to — not where either of them stood.
-        flight[0] = S.anim[ballSrc.id] || flight[0];
-        if (receiver && S.anim[receiver.id]) flight[flight.length - 1] = S.anim[receiver.id];
-        const bp = pointAt(flight, bf);
-        el('ellipse',{ cx:bp.x, cy:bp.y, rx:15, ry:10, fill:'#8a4a1c', stroke:'#fff','stroke-width':3,
-                       transform:`rotate(-25 ${bp.x} ${bp.y})` }, L.ball);
-      }
+  if (d.ballPts){
+    const bf = Math.max(0, Math.min(1, (t - .45) / .4));
+    if (bf > 0){
+      const path = d.ballPts.slice();
+      path[0] = S.anim[d.ballSrc.id] || path[0];
+      if (d.receiver && S.anim[d.receiver.id]) path[path.length - 1] = S.anim[d.receiver.id];
+      const bp = pointAt(path, bf);
+      el('ellipse',{ cx:bp.x, cy:bp.y, rx:15, ry:10, fill:'#8a4a1c', stroke:'#fff','stroke-width':3,
+                     transform:`rotate(-25 ${bp.x} ${bp.y})` }, L.ball);
     }
+  }
+}
 
-    if (raw < 1) S.animRAF = requestAnimationFrame(tick);
-    else setTimeout(stopAnim, 700);
+function seek(t){
+  A.t = Math.max(0, Math.min(1, t));
+  renderAt(A.t);
+  syncTransport();
+}
+
+function playAnim(){
+  if (!S.play) return;
+  const d = A.data || (A.data = animData());
+  if (!d.any){ toast('Nothing to animate yet — give someone an assignment'); return; }
+  if (A.t >= 1) A.t = 0;               // replay from the top
+  S.selected = null;
+  A.playing = true;
+  A.last = performance.now();
+  const tick = now => {
+    A.t = Math.min(1, A.t + (now - A.last) / (DURATION / A.speed));
+    A.last = now;
+    renderAt(A.t);
+    syncTransport();
+    if (A.t >= 1){ A.playing = false; syncTransport(); return; }
+    A.raf = requestAnimationFrame(tick);
   };
-  S.animRAF = requestAnimationFrame(tick);
+  A.raf = requestAnimationFrame(tick);
+  syncTransport();
+}
+
+function pauseAnim(){
+  A.playing = false;
+  cancelAnimationFrame(A.raf);
+  A.raf = 0;
+  syncTransport();
+}
+
+/** Back to the top and out of animation entirely. */
+function stopAnim(){
+  pauseAnim();
+  A.t = 0; A.data = null; S.anim = null;
+  if (S.play) renderField();
+  syncTransport();
+}
+
+function syncTransport(){
+  const btn = $('tp-play');
+  if (btn){
+    btn.textContent = A.playing ? '❚❚' : '▶';
+    btn.setAttribute('aria-label', A.playing ? 'Pause the animation' : 'Play the animation');
+  }
+  const scrub = $('tp-scrub');
+  if (scrub && document.activeElement !== scrub) scrub.value = Math.round(A.t * 1000);
+  const time = $('tp-time');
+  if (time) time.textContent = (A.t * playSeconds()).toFixed(1) + 's / ' + playSeconds().toFixed(1) + 's';
+  const speed = $('tp-speed');
+  if (speed && speed.value !== String(A.speed)) speed.value = String(A.speed);
 }
 
 /* ---------------------------------------------------------------
@@ -2431,6 +2607,13 @@ document.addEventListener('click', e => {
     e.target.closest('.modal')?.classList.remove('on');
 });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('stage-field').classList.contains('is-full')){ toggleFull(); return; }
+  if (e.key === 'Escape' && document.querySelector('.panel-left.open')){ setDrawer(false); return; }
+  if (e.key === ' ' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)){
+    e.preventDefault();
+    A.playing ? pauseAnim() : playAnim();
+    return;
+  }
   if (e.key === 'Escape'){
     document.querySelectorAll('.modal.on').forEach(m => m.classList.remove('on'));
     if (S.mode === 'draw'){ finishDrawing(); }
@@ -2664,7 +2847,56 @@ $('btn-opp').addEventListener('click', () => {
 $('opp-form').addEventListener('change', e => {
   if (opponents().length) addOpponent(e.target.value);   // reshape who's already out there
 });
-$('btn-animate').onclick  = runAnim;
+/* ---- transport ---- */
+$('tp-play').addEventListener('click', () => A.playing ? pauseAnim() : playAnim());
+$('tp-speed').addEventListener('change', e => {
+  A.speed = parseFloat(e.target.value) || 1;
+  A.last = performance.now();          // don't let the change jump the clock
+  savePrefs();
+  syncTransport();
+});
+$('tp-scrub').addEventListener('input', e => {
+  // Dragging the bar takes over from playback — you are driving now.
+  if (A.playing) pauseAnim();
+  seek(+e.target.value / 1000);
+});
+
+/* ---- full screen ---- */
+function toggleFull(){
+  const wrap = $('stage-field');
+  const on = !wrap.classList.contains('is-full');
+  wrap.classList.toggle('is-full', on);
+  document.body.classList.toggle('is-full-open', on);
+  $('tp-full').textContent = on ? '✕' : '⛶';
+  $('tp-full').setAttribute('aria-label', on ? 'Leave full screen' : 'Full screen');
+  // Ask for real full screen too where it exists. iOS Safari won't, which is
+  // why the overlay above does the actual work rather than relying on this.
+  try {
+    if (on && wrap.requestFullscreen) wrap.requestFullscreen().catch(() => {});
+    else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  } catch (e){ /* overlay already covers it */ }
+  renderField();
+  if (S.anim) renderAt(A.t);
+}
+$('tp-full').addEventListener('click', toggleFull);
+// Leaving native full screen by any route (Esc, gesture) drops the overlay too.
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && $('stage-field').classList.contains('is-full')) toggleFull();
+});
+
+/* ---- plays drawer, for phones ---- */
+const veil = document.createElement('div');
+veil.className = 'drawer-veil';
+document.body.appendChild(veil);
+function setDrawer(open){
+  document.querySelector('.panel-left').classList.toggle('open', open);
+  veil.classList.toggle('on', open);
+}
+$('btn-plays').addEventListener('click', () => setDrawer(true));
+veil.addEventListener('click', () => setDrawer(false));
+// Picking a play is the whole point of opening it, so it closes behind you.
+$('play-list').addEventListener('click', e => { if (e.target.closest('[data-play]')) setDrawer(false); });
+
 $('btn-reset').onclick    = resetPlay;
 $('btn-save').onclick     = savePlay;
 $('btn-png').onclick      = exportPNG;
