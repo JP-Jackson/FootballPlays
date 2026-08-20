@@ -52,10 +52,19 @@ const b64u = {
 /* ── Passwords: PBKDF2-SHA256 ──────────────────────────────────────────────
    Stored as pbkdf2$<iterations>$<salt>$<hash>. Verification always runs the
    full derivation and compares in constant time, so a wrong password costs
-   the same as a right one and reveals nothing by timing.                    */
-const PBKDF2_ITERATIONS = 210000;
+   the same as a right one and reveals nothing by timing.
+
+   100,000 is the ceiling, not a preference: the Workers runtime refuses
+   anything higher with "Pbkdf2 failed: iteration counts above 100000 are not
+   supported". Local `wrangler dev` does NOT enforce that cap, so a larger
+   number passes every local test and fails on the first real request — raise
+   it and you break production only. Because the iteration count is stored in
+   each hash, older hashes keep verifying at whatever count made them.        */
+const PBKDF2_MAX_ITERATIONS = 100000;      // hard limit imposed by the runtime
+const PBKDF2_ITERATIONS = PBKDF2_MAX_ITERATIONS;
 
 export async function hashPassword(password, iterations = PBKDF2_ITERATIONS) {
+  iterations = Math.min(iterations, PBKDF2_MAX_ITERATIONS);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const bits = await deriveBits(password, salt, iterations);
   return `pbkdf2$${iterations}$${b64u.encode(salt)}$${b64u.encode(bits)}`;
@@ -67,6 +76,7 @@ export async function verifyPassword(password, stored) {
     if (scheme !== "pbkdf2") return false;
     const iterations = parseInt(iterStr, 10);
     if (!Number.isFinite(iterations) || iterations < 1000) return false;
+    if (iterations > PBKDF2_MAX_ITERATIONS) return false;   // unverifiable here
     const bits = await deriveBits(password, b64u.decode(saltStr), iterations);
     return timingSafeEqual(bits, b64u.decode(hashStr));
   } catch { return false; }

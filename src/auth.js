@@ -77,8 +77,11 @@ export async function handleAuth(request, env, path, method) {
 
     // Run the same work whether or not the user exists, so a missing account
     // and a wrong password take the same amount of time.
+    // Must sit at or under the runtime's iteration cap: above it the derivation
+    // throws instead of running, and the timing equalisation quietly stops
+    // working for exactly the case it exists to cover.
     const stored = user?.password_hash
-      || "pbkdf2$210000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      || "pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     const ok = await verifyPassword(password, stored);
 
     if (!user || !ok) return json({ error: BAD_LOGIN }, 401);
