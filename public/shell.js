@@ -56,7 +56,7 @@
 
     return '<a class="brand" href="/">' +
       '<img src="/brand/jp-logo.svg" alt="">' +
-      '<div><h1>Football Plays</h1><p>Play designer</p></div></a>' +
+      '<div><h1>Football Plays</h1><p id="sh-ver">Play designer</p></div></a>' +
       '<div class="tb-actions">' +
         nav.map(n => '<a class="btn ' + (n.key === active ? "primary" : "ghost") +
                      '" href="' + n.href + '" style="text-decoration:none">' + esc(n.label) + "</a>").join("") +
@@ -222,6 +222,14 @@
     });
 
     mountFeedback(user);
+
+    // Show which version is running, linking to what changed in it. Best-effort:
+    // the header should never fail to render because a version lookup did.
+    api("/api/version").then(function (v) {
+      const el = document.getElementById("sh-ver");
+      if (el) el.innerHTML = 'Play designer · <a href="/version" style="color:#9fb4cd">v' + esc(v.version) + "</a>";
+    }).catch(function () {});
+
     // Someone whose password was set by an admin gets nudged once, on arrival.
     if (user.must_change_password) {
       acct.classList.add("on");

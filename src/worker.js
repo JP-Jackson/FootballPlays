@@ -10,6 +10,7 @@ import { handleAuth, handleChangePassword, countUsers } from "./auth.js";
 import { handleUsers } from "./users.js";
 import { handlePlays } from "./plays.js";
 import { handleFeedbackSubmit, handleFeedbackAdmin } from "./feedback.js";
+import { VERSION, RELEASES } from "./releases.js";
 
 // Reachable without signing in. The login and setup screens are useless without
 // their stylesheet and the logo, so the shared chrome has to be public too —
@@ -88,6 +89,8 @@ async function route(request, env, url, path, method) {
       },
     });
   }
+  if (path === "/api/version" && method === "GET") return json({ version: VERSION, releases: RELEASES });
+  if (path === "/version") return asset(request, env, "/version.html");
   if (path === "/api/password" && method === "PUT") return handleChangePassword(request, env, user);
   if (path === "/api/feedback" && method === "POST") return handleFeedbackSubmit(request, env, user);
 

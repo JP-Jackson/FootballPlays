@@ -1951,31 +1951,141 @@ function stopAnim(){
   $('btn-animate').textContent = '▶ Animate';
   if (S.play) renderField();
 }
+/* Some lines end ON A PERSON rather than on a spot: a pass ends at the
+   receiver, man coverage ends at the man. Drawn on a still field they look the
+   same as any other line, but the moment everyone moves the difference matters —
+   a ball aimed at a fixed point flies to where the receiver used to be while he
+   keeps running. These helpers work out who a line is really aimed at, so the
+   animation can send it to wherever that player has got to. */
+const endOfPath = p => { const pts = pathOf(p); return pts[pts.length - 1]; };
+
+/** The player a line is pointing at, or null if it's aimed at open grass.
+ *  Measured against both where a player starts and where he finishes, because
+ *  a coach may reasonably draw either — at the receiver's feet before the snap,
+ *  or out where the catch happens. */
+function aimedAt(from, endPt, side, coverable){
+  let best = null, bestD = Infinity;
+  S.play.players.forEach(q => {
+    if (q.id === from.id) return;
+    if (side && q.side !== side) return;
+    // Nobody covers a lineman. They are not eligible to catch the ball, so a
+    // man defender pointed vaguely at the line is aimed at a gap, not at the
+    // left tackle.
+    if (coverable && q.role === 'ol') return;
+    const e = endOfPath(q);
+    const d = Math.min(Math.hypot(q.x - endPt.x, q.y - endPt.y),
+                       Math.hypot(e.x - endPt.x, e.y - endPt.y));
+    if (d < bestD){ bestD = d; best = q; }
+  });
+  return bestD <= 7 * U ? best : null;     // further than that, it's a spot
+}
+
+/** Hand each man defender his own receiver.
+ *  Done for the whole defence at once rather than one defender at a time,
+ *  because man coverage is an assignment of people to people: two defenders
+ *  cannot both take the split end while the back runs free. Pairs are taken
+ *  closest-first, so the most obvious matchups are settled before the
+ *  leftovers, and anyone with nobody plausible left simply covers grass. */
+function assignCoverage(){
+  const marks = new Map();
+  const defenders = S.play.players.filter(p => p.asg.some(a => a.t === 'man' && a.pts.length));
+  if (!defenders.length) return marks;
+
+  // Linemen can't catch it and the passer isn't running a route, so neither is
+  // ever somebody's man.
+  const eligible = S.play.players.filter(q =>
+    q.side !== defenders[0].side && q.role !== 'ol' && q.key !== 'QB');
+  if (!eligible.length) return marks;
+
+  const pairs = [];
+  defenders.forEach(d => {
+    const man = d.asg.find(a => a.t === 'man' && a.pts.length);
+    const aim = man.pts[man.pts.length - 1];
+    eligible.forEach(q => {
+      const e = endOfPath(q);
+      const dist = Math.min(Math.hypot(q.x - aim.x, q.y - aim.y),
+                            Math.hypot(e.x - aim.x, e.y - aim.y));
+      // Generous on purpose: a linebacker is assigned his back before the
+      // snap even though the two of them start a good way apart.
+      if (dist <= 18 * U) pairs.push({ d:d.id, q:q.id, dist });
+    });
+  });
+  pairs.sort((a, b) => a.dist - b.dist);
+
+  const usedD = new Set(), usedQ = new Set();
+  pairs.forEach(pair => {
+    if (usedD.has(pair.d) || usedQ.has(pair.q)) return;
+    usedD.add(pair.d); usedQ.add(pair.q);
+    marks.set(pair.d, pair.q);
+  });
+  return marks;
+}
+
+/** Trail a covered player instead of standing on top of him. */
+function coverSpot(target, defenderStart){
+  const dx = defenderStart.x - target.x, dy = defenderStart.y - target.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const gap = R * 1.5;
+  return { x: target.x + dx / len * gap, y: target.y + dy / len * gap };
+}
+
 function runAnim(){
   if (!S.play) return;
   if (S.anim){ stopAnim(); return; }
-  const tracks = S.play.players.map(p => ({ id:p.id, pts:pathOf(p) })).filter(t => t.pts.length > 1);
-  if (!tracks.length && !S.play.ball){ toast('Nothing to animate yet — give someone an assignment'); return; }
+
+  // A defender in man coverage goes where his man goes. Zone deliberately does
+  // not — a zone defender is responsible for grass, not for a person.
+  const marks = assignCoverage();
+  const tracks = S.play.players.map(p => ({
+    id:p.id, pts:pathOf(p), follow: marks.get(p.id) || null, start:{ x:p.x, y:p.y },
+  })).filter(t => t.pts.length > 1 || t.follow);
+
   const ballSrc = S.play.ball ? playerAt(S.play.ball.from) : null;
   const ballPts = ballSrc ? [{ x:ballSrc.x, y:ballSrc.y }, ...S.play.ball.pts] : null;
+  const receiver = ballPts && ballPts.length > 1
+    ? aimedAt(ballSrc, ballPts[ballPts.length - 1], null) : null;
+
+  if (!tracks.length && !ballPts){
+    toast('Nothing to animate yet — give someone an assignment');
+    return;
+  }
 
   $('btn-animate').textContent = '■ Stop';
   S.selected = null;
   const t0 = performance.now();
+
   const tick = now => {
     const raw = Math.min(1, (now - t0) / DURATION);
     const e   = raw < .5 ? 2*raw*raw : 1 - Math.pow(-2*raw + 2, 2)/2;   // ease in/out
     S.anim = {};
-    tracks.forEach(t => { S.anim[t.id] = pointAt(t.pts, e); });
+
+    // Anyone who moves under their own steam first, so that the players who
+    // chase them have somewhere current to chase to.
+    tracks.forEach(t => { if (!t.follow) S.anim[t.id] = pointAt(t.pts, e); });
+    tracks.forEach(t => {
+      if (!t.follow) return;
+      const mark = S.anim[t.follow] || (playerAt(t.follow) || t.start);
+      const pts = t.pts.slice();
+      pts[pts.length - 1] = coverSpot(mark, t.start);
+      S.anim[t.id] = pointAt(pts, e);
+    });
+
     drawPaths(); drawPlayers();
+
     if (ballPts){
       const bf = Math.max(0, Math.min(1, (raw - .45) / .4));
       if (bf > 0){
-        const bp = pointAt(ballPts, bf);
+        const flight = ballPts.slice();
+        // Thrown from wherever the passer has dropped back to, and caught
+        // wherever the receiver has got to — not where either of them stood.
+        flight[0] = S.anim[ballSrc.id] || flight[0];
+        if (receiver && S.anim[receiver.id]) flight[flight.length - 1] = S.anim[receiver.id];
+        const bp = pointAt(flight, bf);
         el('ellipse',{ cx:bp.x, cy:bp.y, rx:15, ry:10, fill:'#8a4a1c', stroke:'#fff','stroke-width':3,
                        transform:`rotate(-25 ${bp.x} ${bp.y})` }, L.ball);
       }
     }
+
     if (raw < 1) S.animRAF = requestAnimationFrame(tick);
     else setTimeout(stopAnim, 700);
   };
