@@ -1901,20 +1901,37 @@ function exportPNG(){
     ctx.drawImage(img, 0, 0, c.width, c.height);
     c.toBlob(b => {
       if (!b){ toast('Export failed'); return; }
-      download(b, S.play.name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.png');
-      toast('PNG saved');
+      const file = (S.play.name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'play') + '.png';
+      download(b, file).then(ok => { if (ok) toast('PNG saved'); });
     }, 'image/png');
     S.selected = wasSel; renderField();
   };
   img.onerror = () => { toast('Export failed'); S.selected = wasSel; renderField(); };
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgMarkup());
 }
-function download(blob, name){
+/**
+ * Hand a generated file to whoever is hosting the page.
+ * A normal browser tab saves it with a download link. Inside a sandboxed
+ * viewer the page isn't allowed to do that, so we ask the host instead.
+ * Resolves true only if the file actually reached the viewer.
+ */
+async function download(blob, name){
+  try {
+    const host = (typeof window.claude === 'object' && window.claude
+                  && typeof window.claude.use === 'function')
+      ? await window.claude.use('downloads') : null;
+    if (host){ await host.save({ filename:name, data:blob }); return true; }
+  } catch (err){
+    if (err && err.code === 'declined') return false;
+    toast(err && err.message ? err.message : 'Could not save that file');
+    return false;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return true;
 }
 
 /* ---------------------------------------------------------------
@@ -1984,8 +2001,7 @@ function resetPlay(){
 function backup(){
   const blob = new Blob([JSON.stringify({ version:1, exported:new Date().toISOString(), ...store }, null, 2)],
                         { type:'application/json' });
-  download(blob, 'playbook-backup.json');
-  toast('Playbook downloaded');
+  download(blob, 'playbook-backup.json').then(ok => { if (ok) toast('Playbook downloaded'); });
 }
 function restore(file){
   const fr = new FileReader();
