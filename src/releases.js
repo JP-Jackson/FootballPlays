@@ -2,9 +2,18 @@
 // Bump VERSION and add an entry here in the same commit as the change —
 // the app reads this, so a release note is never out of date with the code.
 
-export const VERSION = "1.5.0";
+export const VERSION = "1.5.1";
 
 export const RELEASES = [
+  {
+    version: "1.5.1",
+    date: "2026-08-20",
+    title: "Nothing in the way of full screen",
+    notes: [
+      "Going full screen on a phone no longer brings up the operating system's banner telling you how to get out again, which sat over the top of the play for several seconds. The app never asks the browser for native full screen now — the overlay already fills the screen everywhere, so the banner was the only thing that call ever added.",
+      "The turn-your-phone-sideways note fades away after a few seconds instead of staying put.",
+    ],
+  },
   {
     version: "1.5.0",
     date: "2026-08-20",

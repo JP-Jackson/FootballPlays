@@ -79,10 +79,11 @@ h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
   font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;
   min-width:64px;text-align:right;white-space:nowrap;
 }
-/* Full screen is an ordinary fixed overlay rather than the Fullscreen API,
-   because iOS Safari only grants that to <video> — on a phone, the one place
-   this matters most, requestFullscreen simply does nothing. The native call is
-   still made where it works, as a bonus. */
+/* Full screen is an ordinary fixed overlay, never the Fullscreen API. iOS
+   Safari grants that only to <video>, and the platforms that do grant it put a
+   system banner over the top of the screen for several seconds explaining how
+   to leave — squarely on top of the play. An overlay behaves the same
+   everywhere and says nothing. */
 .field-wrap.is-full{
   position:fixed;inset:0;z-index:300;margin:0;border-radius:0;
   background:#0d1b2a;display:flex;flex-direction:column;justify-content:center;
@@ -91,7 +92,9 @@ h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
 .field-wrap.is-full #field{flex:1;min-height:0;width:100%;height:100%}
 /* A play is wider than it is tall, so on a phone held upright it can only ever
    fill about a third of the screen. Rather than pretend otherwise, say so. */
-.turn-hint{display:none;color:#9fb4cd;font-size:13px;text-align:center;padding:6px 0 0}
+.turn-hint{display:none;color:#9fb4cd;font-size:13px;text-align:center;padding:6px 0 0;
+  transition:opacity .5s ease}
+.turn-hint.fading{opacity:0;pointer-events:none}
 .field-wrap.is-full .turn-hint{display:none}
 @media (orientation:portrait) and (max-width:820px){
   .field-wrap.is-full .turn-hint{display:block}
@@ -2862,6 +2865,12 @@ $('tp-scrub').addEventListener('input', e => {
 });
 
 /* ---- full screen ---- */
+/* Deliberately does NOT call requestFullscreen(). The overlay below already
+   fills the screen on every platform, so the native call adds nothing you can
+   see — except the banner the operating system puts over the top of the screen
+   telling you how to get out again, which sits there for several seconds
+   directly on top of the play. Not worth it for a button whose whole job is to
+   get things out of the way. */
 function toggleFull(){
   const wrap = $('stage-field');
   const on = !wrap.classList.contains('is-full');
@@ -2869,20 +2878,21 @@ function toggleFull(){
   document.body.classList.toggle('is-full-open', on);
   $('tp-full').textContent = on ? '✕' : '⛶';
   $('tp-full').setAttribute('aria-label', on ? 'Leave full screen' : 'Full screen');
-  // Ask for real full screen too where it exists. iOS Safari won't, which is
-  // why the overlay above does the actual work rather than relying on this.
-  try {
-    if (on && wrap.requestFullscreen) wrap.requestFullscreen().catch(() => {});
-    else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
-  } catch (e){ /* overlay already covers it */ }
+
+  // The turn-your-phone hint is worth saying once, briefly, then getting out of
+  // the way itself.
+  const hint = document.querySelector('.turn-hint');
+  if (hint){
+    clearTimeout(toggleFull._hint);
+    hint.classList.toggle('fading', false);
+    if (on) toggleFull._hint = setTimeout(() => hint.classList.add('fading'), 3500);
+    else hint.classList.remove('fading');
+  }
+
   renderField();
   if (S.anim) renderAt(A.t);
 }
 $('tp-full').addEventListener('click', toggleFull);
-// Leaving native full screen by any route (Esc, gesture) drops the overlay too.
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && $('stage-field').classList.contains('is-full')) toggleFull();
-});
 
 /* ---- plays drawer, for phones ---- */
 const veil = document.createElement('div');
