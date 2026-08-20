@@ -1,0 +1,3 @@
+# public/ is the only directory served as static assets (see wrangler.jsonc),
+# so worker source, the schema and project files are never publicly readable.
+# Nothing else needs excluding — but keep this file, it documents the rule.

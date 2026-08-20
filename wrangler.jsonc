@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "football-plays",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-05-17",
+
+  // Only public/ is servable. Worker source, schema.sql and project files sit
+  // outside it, so none of them can be fetched over HTTP.
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    // The Worker sees every request first — that's what lets the login gate
+    // run before any page is handed out.
+    "run_worker_first": true
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "football-plays",
+      "database_id": "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"
+    }
+  ],
+
+  // Served at footballplays.jpsapps.com. Because jpsapps.com is a zone in the
+  // same Cloudflare account, `wrangler deploy` creates the DNS record itself —
+  // there is nothing to add by hand.
+  "routes": [
+    { "pattern": "footballplays.jpsapps.com", "custom_domain": true }
+  ],
+
+  "vars": {
+    // onboarding@resend.dev works the moment you deploy, but Resend only
+    // delivers it to the address your Resend account is registered under —
+    // which is fine, since feedback only goes to you.
+    //
+    // Once notify.jpsapps.com is verified in Resend (its DNS records are in
+    // the README), switch this line to send from your own domain:
+    //   "FEEDBACK_FROM": "Football Plays <feedback@notify.jpsapps.com>"
+    "FEEDBACK_FROM": "Football Plays <onboarding@resend.dev>"
+  }
+
+  // Secrets (never in this file — set with `npx wrangler secret put NAME`):
+  //   SESSION_SECRET   long random string; signs session cookies
+  //   RESEND_API_KEY   enables feedback email; without it feedback still saves
+}

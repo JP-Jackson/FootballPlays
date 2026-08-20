@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · Football Plays</title>
+<link rel="icon" href="/brand/jp-logo.svg">
+<link rel="apple-touch-icon" href="/brand/jp-180.png">
+<link rel="stylesheet" href="/shell.css">
+<style>
+  body{display:grid;place-items:center;padding:20px;
+       background:linear-gradient(170deg,#16304f 0%,#12233d 46%,#0e1b30 100%)}
+  .card{width:min(400px,100%);background:#fff;border-radius:16px;padding:32px 30px 26px;
+        box-shadow:0 22px 60px rgba(0,0,0,.34)}
+  .mark{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:22px;text-align:center}
+  .mark img{width:66px;height:66px;border-radius:16px;box-shadow:0 5px 16px rgba(16,32,50,.28)}
+  .mark h1{font-size:22px}
+  .mark p{margin:2px 0 0;color:var(--muted);font-size:13px}
+  .field:first-of-type{margin-top:0}
+  #go{width:100%;margin-top:18px;padding:11px}
+  footer{margin-top:20px;text-align:center;font-size:12px;color:#8ea4bd}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark">
+      <img src="/brand/jp-logo.svg" alt="">
+      <div><h1>Football Plays</h1><p>Sign in to your playbook</p></div>
+    </div>
+    <form id="form" novalidate>
+      <div class="field">
+        <label for="u">Username</label>
+        <input type="text" id="u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </div>
+      <div class="field">
+        <label for="p">Password</label>
+        <input type="password" id="p" name="password" autocomplete="current-password" required>
+      </div>
+      <div class="err" id="err" role="alert"></div>
+      <button class="btn primary" id="go" type="submit">Sign in</button>
+    </form>
+    <footer>No account? JP sets those up.</footer>
+  </main>
+<script>
+(function(){
+  var form = document.getElementById('form'), err = document.getElementById('err'), go = document.getElementById('go');
+  var next = new URLSearchParams(location.search).get('next') || '/';
+  // Only ever bounce back to a path on this site — never to an absolute URL
+  // someone stuffed into the query string.
+  if (!/^\/(?!\/)/.test(next)) next = '/';
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    err.classList.remove('on');
+    go.disabled = true; go.textContent = 'Signing in…';
+    try {
+      var res = await fetch('/api/login', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username: document.getElementById('u').value,
+                               password: document.getElementById('p').value })
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok) throw new Error(data.error || 'That username and password don’t match.');
+      location.href = next;
+    } catch (e2) {
+      err.textContent = e2.message;
+      err.classList.add('on');
+      document.getElementById('p').select();
+    } finally {
+      go.disabled = false; go.textContent = 'Sign in';
+    }
+  });
+})();
+</script>
+</body>
+</html>

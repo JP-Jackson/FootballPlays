@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Access &amp; Roles · Football Plays</title>
+<link rel="icon" href="/brand/jp-logo.svg">
+<link rel="stylesheet" href="/shell.css">
+<style>
+  .wrap{max-width:1080px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+     color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  tr.off{background:#fafbfc;color:var(--muted)}
+  .nm{font-weight:650}
+  .un{font-size:12px;color:var(--muted)}
+  .badge{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+         padding:3px 9px;border-radius:999px}
+  .badge.admin{background:#e8effa;color:#1d3557}
+  .badge.coach{background:#e9f6ee;color:#1d5c37}
+  .badge.off{background:#eef2f7;color:#6b7a8c}
+  .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+  .scroll{overflow-x:auto}
+  .empty{padding:28px 16px;text-align:center;color:var(--muted)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pwbox{background:#e9f6ee;border:1px solid #bfe3cd;border-radius:9px;padding:12px 14px;margin-top:12px;display:none}
+  .pwbox.on{display:block}
+  .pwbox code{display:block;font-size:17px;font-weight:700;letter-spacing:.5px;margin-top:5px;
+              background:#fff;border:1px solid #bfe3cd;border-radius:7px;padding:9px 11px;overflow-wrap:anywhere}
+  @media(max-width:640px){ .row2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header class="topbar"></header>
+<main class="wrap">
+  <section class="panel">
+    <div class="panel-hd">
+      <h2>Who can sign in</h2>
+      <button class="btn primary sm" id="add" style="margin-left:auto">+ Add person</button>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Person</th><th>Team</th><th>Role</th><th>Last signed in</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-hd"><h2>Recent activity</h2></div>
+    <div class="scroll"><table>
+      <thead><tr><th>When</th><th>What</th><th>Who</th><th>Details</th></tr></thead>
+      <tbody id="audit"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+    </table></div>
+  </section>
+</main>
+
+<!-- add / edit -->
+<div class="modal" id="m-user">
+  <div class="sheet">
+    <div class="sheet-hd"><h2 id="m-title">Add person</h2><button class="x" data-close>&times;</button></div>
+    <div class="sheet-bd">
+      <div class="row2">
+        <div class="field" style="margin-top:0"><label for="f-name">Name</label>
+          <input type="text" id="f-name" placeholder="Josh Bujnoch"></div>
+        <div class="field" style="margin-top:0"><label for="f-user">Username</label>
+          <input type="text" id="f-user" autocapitalize="none" spellcheck="false" placeholder="josh"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="f-email">Email</label>
+          <input type="email" id="f-email" placeholder="optional"></div>
+        <div class="field"><label for="f-team">Team</label>
+          <input type="text" id="f-team" placeholder="Bujnoch Peewee"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="f-role">Role</label>
+          <select id="f-role"><option value="coach">Coach</option><option value="admin">Admin</option></select></div>
+        <div class="field" id="wrap-active"><label for="f-active">Account</label>
+          <select id="f-active"><option value="1">Active</option><option value="0">Turned off</option></select></div>
+      </div>
+      <div class="field" id="wrap-pw"><label for="f-pw">Temporary password</label>
+        <div style="display:flex;gap:8px"><input type="text" id="f-pw" autocomplete="off">
+          <button class="btn plain sm" id="gen" type="button">Generate</button></div>
+        <p class="hint">They'll be asked to change it the first time they sign in.</p></div>
+      <p class="hint" id="role-note">Coaches use the playbook. Admins also get Feedback and this page.</p>
+      <div class="err" id="m-err"></div>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn plain" data-close>Cancel</button>
+      <button class="btn primary" id="m-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- reset password -->
+<div class="modal" id="m-pw">
+  <div class="sheet">
+    <div class="sheet-hd"><h2>Reset password</h2><button class="x" data-close>&times;</button></div>
+    <div class="sheet-bd">
+      <p style="margin:0;font-size:13.5px;color:#5b6b7c">New password for <b id="pw-who"></b>.
+        You'll only see it once — copy it before you close this.</p>
+      <div class="field"><label for="pw-new">New password</label>
+        <div style="display:flex;gap:8px"><input type="text" id="pw-new" autocomplete="off">
+          <button class="btn plain sm" id="pw-gen" type="button">Generate</button></div></div>
+      <div class="pwbox" id="pw-done">Password set. Give them this:<code id="pw-shown"></code></div>
+      <div class="err" id="pw-err"></div>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn plain" data-close>Close</button>
+      <button class="btn primary" id="pw-save">Set password</button>
+    </div>
+  </div>
+</div>
+
+<script src="/shell.js"></script>
+<script>
+(function(){
+  var api = Shell.api, esc = Shell.esc, toast = Shell.toast;
+  var USERS = [], ME = null, editing = null, pwTarget = null;
+
+  var when = iso => { if(!iso) return '—'; try { return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); } catch(e){ return iso; } };
+
+  // Readable out loud over the phone: no l/1/O/0 lookalikes.
+  function makePassword(){
+    var abc = 'abcdefghjkmnpqrstuvwxyz', ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ', num = '23456789';
+    var all = abc + ABC + num, out = '';
+    var buf = new Uint32Array(14); crypto.getRandomValues(buf);
+    out += ABC[buf[0] % ABC.length];
+    for (var i = 1; i < 12; i++) out += all[buf[i] % all.length];
+    out += num[buf[12] % num.length];
+    return out;
+  }
+
+  function renderUsers(){
+    var box = document.getElementById('rows');
+    if (!USERS.length){ box.innerHTML = '<tr><td colspan="5" class="empty">Nobody yet.</td></tr>'; return; }
+    box.innerHTML = USERS.map(function(u){
+      var isMe = ME && u.id === ME.id;
+      return '<tr class="' + (u.active ? '' : 'off') + '">' +
+        '<td><div class="nm">' + esc(u.name) + (isMe ? ' <span class="un">(you)</span>' : '') + '</div>' +
+            '<div class="un">' + esc(u.username) + (u.email ? ' · ' + esc(u.email) : '') + '</div></td>' +
+        '<td>' + esc(u.team) + '</td>' +
+        '<td><span class="badge ' + esc(u.role) + '">' + esc(u.role) + '</span>' +
+            (u.active ? '' : ' <span class="badge off">off</span>') +
+            (u.must_change_password ? ' <span class="badge off">must reset</span>' : '') + '</td>' +
+        '<td>' + esc(when(u.last_login_at)) + '</td>' +
+        '<td><div class="acts">' +
+          '<button class="btn sm plain" data-edit="' + esc(u.id) + '">Edit</button>' +
+          '<button class="btn sm plain" data-pw="' + esc(u.id) + '">Password</button>' +
+          (isMe ? '' : '<button class="btn sm danger" data-del="' + esc(u.id) + '">Delete</button>') +
+        '</div></td></tr>';
+    }).join('');
+  }
+
+  function renderAudit(list){
+    var box = document.getElementById('audit');
+    if (!list.length){ box.innerHTML = '<tr><td colspan="4" class="empty">Nothing yet.</td></tr>'; return; }
+    box.innerHTML = list.slice(0, 60).map(function(a){
+      var detail = '';
+      try {
+        var d = a.detail ? JSON.parse(a.detail) : null;
+        if (d) detail = Object.keys(d).map(function(k){
+          var v = d[k];
+          return (v && typeof v === 'object' && 'from' in v)
+            ? k + ': ' + esc(String(v.from)) + ' → ' + esc(String(v.to))
+            : k + ': ' + esc(String(v));
+        }).join(', ');
+      } catch(e){}
+      return '<tr><td class="un" style="white-space:nowrap">' + esc(when(a.created_at)) + '</td>' +
+        '<td>' + esc(String(a.action).replace(/_/g,' ')) + (a.target ? ' — <b>' + esc(a.target) + '</b>' : '') + '</td>' +
+        '<td>' + esc(a.changed_by || '') + '</td>' +
+        '<td class="un">' + detail + '</td></tr>';
+    }).join('');
+  }
+
+  async function load(){
+    var d = await api('/admin/api/users');
+    USERS = d.users; renderUsers();
+    var a = await api('/admin/api/audit');
+    renderAudit(a.audit);
+  }
+
+  /* add / edit */
+  function openUser(user){
+    editing = user || null;
+    document.getElementById('m-title').textContent = user ? 'Edit ' + user.name : 'Add person';
+    document.getElementById('f-name').value = user ? user.name : '';
+    document.getElementById('f-user').value = user ? user.username : '';
+    document.getElementById('f-user').disabled = !!user;
+    document.getElementById('f-email').value = user ? (user.email || '') : '';
+    document.getElementById('f-team').value  = user ? user.team : (ME ? ME.team : '');
+    document.getElementById('f-role').value  = user ? user.role : 'coach';
+    document.getElementById('f-active').value = user ? String(user.active) : '1';
+    document.getElementById('wrap-active').style.display = user ? '' : 'none';
+    document.getElementById('wrap-pw').style.display = user ? 'none' : '';
+    document.getElementById('f-pw').value = user ? '' : makePassword();
+    document.getElementById('m-err').classList.remove('on');
+    document.getElementById('m-user').classList.add('on');
+  }
+
+  document.getElementById('add').addEventListener('click', function(){ openUser(null); });
+  document.getElementById('gen').addEventListener('click', function(){
+    document.getElementById('f-pw').value = makePassword();
+  });
+
+  document.getElementById('m-save').addEventListener('click', async function(){
+    var err = document.getElementById('m-err'); err.classList.remove('on');
+    var body = {
+      name:  document.getElementById('f-name').value,
+      email: document.getElementById('f-email').value,
+      team:  document.getElementById('f-team').value,
+      role:  document.getElementById('f-role').value,
+    };
+    try {
+      if (editing){
+        body.active = document.getElementById('f-active').value === '1';
+        await api('/admin/api/users/' + encodeURIComponent(editing.id), { method:'PUT', body: body });
+        toast('Saved');
+      } else {
+        body.username = document.getElementById('f-user').value;
+        body.password = document.getElementById('f-pw').value;
+        var pw = body.password;
+        await api('/admin/api/users', { method:'POST', body: body });
+        toast('Added — their password is ' + pw);
+      }
+      document.getElementById('m-user').classList.remove('on');
+      await load();
+    } catch (e){ err.textContent = e.message; err.classList.add('on'); }
+  });
+
+  /* reset password */
+  document.getElementById('pw-gen').addEventListener('click', function(){
+    document.getElementById('pw-new').value = makePassword();
+  });
+  document.getElementById('pw-save').addEventListener('click', async function(){
+    var err = document.getElementById('pw-err'), done = document.getElementById('pw-done');
+    err.classList.remove('on');
+    var value = document.getElementById('pw-new').value;
+    try {
+      await api('/admin/api/users/' + encodeURIComponent(pwTarget.id) + '/password',
+                { method:'PUT', body:{ password: value } });
+      document.getElementById('pw-shown').textContent = value;
+      done.classList.add('on');
+      await load();
+    } catch (e){ err.textContent = e.message; err.classList.add('on'); }
+  });
+
+  document.getElementById('rows').addEventListener('click', async function(e){
+    var ed = e.target.closest('[data-edit]');
+    if (ed) return openUser(USERS.find(u => u.id === ed.getAttribute('data-edit')));
+
+    var pw = e.target.closest('[data-pw]');
+    if (pw){
+      pwTarget = USERS.find(u => u.id === pw.getAttribute('data-pw'));
+      document.getElementById('pw-who').textContent = pwTarget.name;
+      document.getElementById('pw-new').value = makePassword();
+      document.getElementById('pw-done').classList.remove('on');
+      document.getElementById('pw-err').classList.remove('on');
+      document.getElementById('m-pw').classList.add('on');
+      return;
+    }
+
+    var del = e.target.closest('[data-del]');
+    if (del){
+      var u = USERS.find(x => x.id === del.getAttribute('data-del'));
+      if (!confirm('Delete ' + u.name + '? They will not be able to sign in again. Plays they made stay in the team playbook.')) return;
+      try { await api('/admin/api/users/' + encodeURIComponent(u.id), { method:'DELETE' }); toast('Deleted'); await load(); }
+      catch (e2){ toast(e2.message, true); }
+    }
+  });
+
+  document.addEventListener('click', function(e){
+    if (e.target.matches('[data-close]') || e.target.classList.contains('modal'))
+      e.target.closest('.modal').classList.remove('on');
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') document.querySelectorAll('.modal.on').forEach(m => m.classList.remove('on'));
+  });
+
+  (async function(){
+    ME = await Shell.start('users');
+    await load();
+  })().catch(e => toast(e.message, true));
+})();
+</script>
+</body>
+</html>

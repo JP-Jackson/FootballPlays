@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up · Football Plays</title>
+<link rel="icon" href="/brand/jp-logo.svg">
+<link rel="stylesheet" href="/shell.css">
+<style>
+  body{display:grid;place-items:center;padding:20px;
+       background:linear-gradient(170deg,#16304f 0%,#12233d 46%,#0e1b30 100%)}
+  .card{width:min(460px,100%);background:#fff;border-radius:16px;padding:30px;
+        box-shadow:0 22px 60px rgba(0,0,0,.34)}
+  .mark{display:flex;align-items:center;gap:13px;margin-bottom:8px}
+  .mark img{width:52px;height:52px;border-radius:13px}
+  .mark h1{font-size:20px}
+  .lede{color:var(--muted);font-size:13.5px;margin:10px 0 0}
+  #go{width:100%;margin-top:18px;padding:11px}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark"><img src="/brand/jp-logo.svg" alt=""><h1>Set up Football Plays</h1></div>
+    <p class="lede">Nobody has an account yet. Create the admin account — that's you. This page
+      stops working the moment it exists, so it can't be used to add a second admin.</p>
+    <form id="form" novalidate>
+      <div class="field"><label for="n">Your name</label>
+        <input type="text" id="n" autocomplete="name" placeholder="JP Jackson"></div>
+      <div class="field"><label for="u">Username</label>
+        <input type="text" id="u" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="jp" required></div>
+      <div class="field"><label for="e">Email &mdash; where feedback gets sent</label>
+        <input type="email" id="e" autocomplete="email" placeholder="you@example.com"></div>
+      <div class="field"><label for="t">Team name</label>
+        <input type="text" id="t" placeholder="Bujnoch Peewee">
+        <p class="hint">Everyone you put on the same team shares one playbook.</p></div>
+      <div class="field"><label for="p">Password</label>
+        <input type="password" id="p" autocomplete="new-password" required>
+        <p class="hint">At least 8 characters.</p></div>
+      <div class="err" id="err" role="alert"></div>
+      <button class="btn primary" id="go" type="submit">Create admin account</button>
+    </form>
+  </main>
+<script>
+(function(){
+  var form = document.getElementById('form'), err = document.getElementById('err'), go = document.getElementById('go');
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    err.classList.remove('on');
+    go.disabled = true; go.textContent = 'Creating…';
+    try {
+      var res = await fetch('/api/setup', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          name: document.getElementById('n').value,
+          username: document.getElementById('u').value,
+          email: document.getElementById('e').value,
+          team: document.getElementById('t').value,
+          password: document.getElementById('p').value
+        })
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok) throw new Error(data.error || 'Could not create the account.');
+      location.href = '/login';
+    } catch (e2) {
+      err.textContent = e2.message; err.classList.add('on');
+    } finally { go.disabled = false; go.textContent = 'Create admin account'; }
+  });
+})();
+</script>
+</body>
+</html>

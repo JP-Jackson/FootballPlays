@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#123524">
-<title>Coach's Playbook — Youth Football Play Designer</title>
+<meta name="theme-color" content="#12233d">
+<title>Football Plays</title>
+<link rel="icon" href="/brand/jp-logo.svg">
+<link rel="alternate icon" href="/brand/jp-32.png">
+<link rel="apple-touch-icon" href="/brand/jp-180.png">
+<link rel="stylesheet" href="/shell.css">
 <style>
 :root{
   --navy:#12233d; --navy-2:#1d3557; --crimson:#b3151f; --crimson-2:#8d1018;
@@ -24,6 +28,9 @@ body{
 button{font:inherit;cursor:pointer}
 input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
+
+/* ---------- app action bar ---------- */
+.appbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0;max-width:1680px;margin:0 auto}
 
 /* ---------- top bar ---------- */
 .topbar{
@@ -201,23 +208,15 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">
-    <span class="ball">🏈</span>
-    <div>
-      <h1>Coach&rsquo;s Playbook</h1>
-      <p>Youth football play designer</p>
-    </div>
-  </div>
-  <div class="tb-actions">
-    <button class="btn primary" id="btn-new">+ New Play</button>
-    <button class="btn ghost" id="btn-roster">Roster</button>
-    <button class="btn ghost" id="btn-download">Backup</button>
-    <button class="btn ghost" id="btn-upload">Restore</button>
-    <button class="btn ghost" id="btn-help">Help</button>
-    <input type="file" id="file-input" accept="application/json,.json" hidden>
-  </div>
-</header>
+<header class="topbar"></header>
+<div class="appbar">
+  <button class="btn primary" id="btn-new">+ New Play</button>
+  <button class="btn plain" id="btn-roster">Roster</button>
+  <button class="btn plain" id="btn-download">Backup</button>
+  <button class="btn plain" id="btn-upload">Restore</button>
+  <button class="btn plain" id="btn-help">Help</button>
+  <input type="file" id="file-input" accept="application/json,.json" hidden>
+</div>
 
 <main class="layout">
 
@@ -385,10 +384,11 @@ select:focus,input:focus,textarea:focus{outline:2px solid #b7d3ee;outline-offset
 <div id="print-area" aria-hidden="true"></div>
 <div class="toast" id="toast"></div>
 
+<script src="/shell.js"></script>
 <script>
 "use strict";
 /* =====================================================================
-   Coach's Playbook — youth football play designer
+   Football Plays — youth football play designer
    Single file, no dependencies. Everything lives in the browser.
    ===================================================================== */
 
@@ -1286,9 +1286,12 @@ function drawLine(g, startPt, pts, type, opts){
    8. APPLICATION STATE
    --------------------------------------------------------------- */
 const DEFAULT_FORM = { offense:'i-form', defense:'5-3' };
-const STORE_KEY = 'coaches-playbook-v1';
+// Only the field-style preference stays on the device — it's a per-screen
+// choice, not part of the playbook.
+const PREF_KEY = 'football-plays-prefs';
 
 let store = { version:1, roster:[], plays:[], fieldStyle:'grass' };
+let ME = null;
 let S = {
   side:'offense', n:11, play:null,
   selected:null,          // player id
@@ -1297,23 +1300,38 @@ let S = {
   ghost:false, anim:null, animRAF:0, dirty:false
 };
 
-function loadStore(){
+/** Pull the team's playbook and roster off the server. */
+async function loadStore(){
+  const [plays, roster] = await Promise.all([
+    Shell.api('/api/plays'),
+    Shell.api('/api/roster'),
+  ]);
+  store.plays  = plays.plays || [];
+  store.roster = (roster.roster || []).map(r => ({ id:r.id, num:r.num || '', name:r.name || '' }));
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw){
-      const d = JSON.parse(raw);
-      if (d && typeof d === 'object'){
-        store.roster = Array.isArray(d.roster) ? d.roster : [];
-        store.plays  = Array.isArray(d.plays)  ? d.plays  : [];
-        if (FIELD_STYLES[d.fieldStyle]) store.fieldStyle = d.fieldStyle;
-      }
-    }
-  } catch (e){ console.warn('Could not read saved playbook:', e); }
+    const pref = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+    if (FIELD_STYLES[pref.fieldStyle]) store.fieldStyle = pref.fieldStyle;
+  } catch (e){ /* a bad pref is not worth failing over */ }
 }
-function saveStore(){
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
-  catch (e){ toast('Could not save — browser storage is full or blocked'); }
+
+function savePrefs(){
+  try { localStorage.setItem(PREF_KEY, JSON.stringify({ fieldStyle: store.fieldStyle })); }
+  catch (e){ /* private browsing; the app still works, it just forgets the style */ }
 }
+
+/** The roster is edited a keystroke at a time, so coalesce the writes. */
+let rosterTimer = null;
+function saveRoster(){
+  clearTimeout(rosterTimer);
+  rosterTimer = setTimeout(async () => {
+    try {
+      const res = await Shell.api('/api/roster', { method:'PUT', body:{ roster: store.roster } });
+      store.roster = (res.roster || []).map(r => ({ id:r.id, num:r.num || '', name:r.name || '' }));
+    } catch (e){ toast('Could not save the roster: ' + e.message); }
+  }, 600);
+}
+// Kept so existing call sites read the same; both kinds of preference are cheap.
+function saveStore(){ savePrefs(); saveRoster(); }
 
 /* ---------------------------------------------------------------
    9. RENDERING THE PLAY
@@ -1409,7 +1427,7 @@ function drawChrome(){
   el('text',{ x:VX, y:VY-PAD_TOP+90, fill:'#6b7a8c','font-family':FONT,'font-weight':700,'font-size':24,
               'letter-spacing':'1' }, g).textContent = meta.toUpperCase();
   el('text',{ x:VX+VW, y:VY-PAD_TOP+52, 'text-anchor':'end', fill:'#9aa8b8','font-family':FONT,
-              'font-weight':700,'font-size':22 }, g).textContent = "Coach's Playbook";
+              'font-weight':700,'font-size':22 }, g).textContent = "Football Plays";
   el('text',{ x:VX+VW, y:VY-PAD_TOP+90, 'text-anchor':'end', fill:'#6b7a8c','font-family':FONT,
               'font-weight':700,'font-size':22,'letter-spacing':'1' }, g)
     .textContent = '\u25b2 DOWNFIELD';
@@ -1510,8 +1528,8 @@ function renderInspector(){
   if (!p){
     box.innerHTML = `<p class="insp-empty">
       <b>Tap a player</b> on the field to give them a job.<br><br>
-      Drag any player to move them. Everything you change here stays on this device
-      until you save it to <b>My Plays</b>.</p>`;
+      Drag any player to move them. Changes aren&rsquo;t kept until you hit
+      <b>Save to My Plays</b> &mdash; then everyone on your team sees them.</p>`;
     return;
   }
 
@@ -1958,7 +1976,7 @@ function printPlays(list){
       ${renderToMarkup(p)}
       ${note ? `<div class="pnote"><b>Coaching point.</b> ${esc(note)}</div>` : ''}
       <div class="pfoot"><span>${esc(p.name)} &middot; ${p.side} &middot; ${p.n} v ${p.n} &middot; ${esc(form(p))}</span>
-        <span>Coach&rsquo;s Playbook</span></div>
+        <span>Football Plays</span></div>
     </section>`;
   }).join('');
   const clean = () => { area.innerHTML = ''; window.removeEventListener('afterprint', clean); };
@@ -1969,52 +1987,94 @@ function printPlays(list){
 /* ---------------------------------------------------------------
    16. SAVING, DELETING, BACKUP
    --------------------------------------------------------------- */
-function savePlay(){
+async function savePlay(){
   if (!S.play) return;
   const name = ($('play-name').value || 'Untitled play').trim();
   S.play.name = name;
-  const copy = JSON.parse(JSON.stringify(S.play));
-  copy.custom = true;
-  copy.family = 'My plays';
-  const at = store.plays.findIndex(p => p.id === copy.id);
-  if (at >= 0 && S.play.custom){ store.plays[at] = copy; toast('Play updated'); }
-  else {
-    copy.id = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    store.plays.unshift(copy);
-    toast('Saved to My Plays');
-  }
-  S.play = copy; S.play.custom = true;
-  baseline = JSON.stringify(copy); S.dirty = false;
-  saveStore(); renderAll();
+  const body = {
+    name, side:S.play.side, n:S.play.n, form:S.play.form,
+    note:S.play.note || '', players:S.play.players, ball:S.play.ball,
+  };
+  const btn = $('btn-save');
+  btn.disabled = true;
+  try {
+    // A play already in the team playbook is updated in place; anything else
+    // (including a library play you've edited) becomes a new one.
+    const mine = S.play.custom && store.plays.some(p => p.id === S.play.id);
+    const res = mine
+      ? await Shell.api('/api/plays/' + encodeURIComponent(S.play.id), { method:'PUT', body })
+      : await Shell.api('/api/plays', { method:'POST', body });
+
+    const saved = res.play;
+    const at = store.plays.findIndex(p => p.id === saved.id);
+    if (at >= 0) store.plays[at] = saved; else store.plays.unshift(saved);
+
+    S.play = JSON.parse(JSON.stringify(saved));
+    baseline = JSON.stringify(S.play);
+    S.dirty = false;
+    renderAll();
+    toast(mine ? 'Play updated' : 'Saved to My Plays');
+  } catch (e){
+    toast(e.message);
+  } finally { btn.disabled = false; }
 }
-function deletePlay(){
+
+async function deletePlay(){
   if (!S.play || !S.play.custom) return;
   if (!confirm(`Delete "${S.play.name}" from My Plays? This can't be undone.`)) return;
-  store.plays = store.plays.filter(p => p.id !== S.play.id);
-  saveStore(); defaultPlayForSide(); toast('Play deleted');
+  try {
+    await Shell.api('/api/plays/' + encodeURIComponent(S.play.id), { method:'DELETE' });
+    store.plays = store.plays.filter(p => p.id !== S.play.id);
+    S.dirty = false;
+    defaultPlayForSide();
+    toast('Play deleted');
+  } catch (e){ toast(e.message); }
 }
+
 function resetPlay(){
   if (!baseline) return;
   loadPlay(JSON.parse(baseline));
   toast('Back to the original');
 }
+
 function backup(){
-  const blob = new Blob([JSON.stringify({ version:1, exported:new Date().toISOString(), ...store }, null, 2)],
-                        { type:'application/json' });
+  const blob = new Blob([JSON.stringify({
+    version:1, exported:new Date().toISOString(), team:ME && ME.team,
+    roster:store.roster, plays:store.plays,
+  }, null, 2)], { type:'application/json' });
   download(blob, 'playbook-backup.json').then(ok => { if (ok) toast('Playbook downloaded'); });
 }
+
 function restore(file){
   const fr = new FileReader();
-  fr.onload = () => {
+  fr.onload = async () => {
+    let d;
     try {
-      const d = JSON.parse(fr.result);
+      d = JSON.parse(fr.result);
       if (!d || !Array.isArray(d.plays)) throw new Error('bad file');
-      const n = d.plays.length;
-      if (!confirm(`Load ${n} play${n===1?'':'s'} and ${(d.roster||[]).length} roster entries? This replaces what's on this device.`)) return;
-      store.roster = Array.isArray(d.roster) ? d.roster : [];
-      store.plays  = d.plays;
-      saveStore(); defaultPlayForSide(); toast('Playbook restored');
-    } catch (e){ toast("That doesn't look like a playbook file"); }
+    } catch (e){ return toast("That doesn't look like a playbook file"); }
+
+    const n = d.plays.length;
+    const alsoRoster = Array.isArray(d.roster) && d.roster.length;
+    if (!confirm(`Add ${n} play${n===1?'':'s'} to the team playbook`
+               + (alsoRoster ? ` and replace the roster with ${d.roster.length} entries` : '') + '?')) return;
+    let added = 0, failed = 0;
+    for (const p of d.plays){
+      try {
+        const res = await Shell.api('/api/plays', { method:'POST', body:{
+          name:p.name, side:p.side, n:p.n, form:p.form, note:p.note || '',
+          players:p.players, ball:p.ball ?? null,
+        } });
+        store.plays.unshift(res.play);
+        added++;
+      } catch (e){ failed++; }
+    }
+    if (alsoRoster){
+      store.roster = d.roster.map(r => ({ num:r.num || '', name:r.name || '' }));
+      saveRoster();
+    }
+    defaultPlayForSide();
+    toast(failed ? `Restored ${added} plays, ${failed} could not be read` : `Restored ${added} plays`);
   };
   fr.readAsText(file);
 }
@@ -2045,12 +2105,12 @@ function renderRoster(){
       <button class="rm" data-rdel="${i}" title="Remove">&times;</button>
     </div>`).join('') || '<p class="empty">No players yet.</p>';
 }
-$('roster-add').onclick = () => { store.roster.push({ num:'', name:'' }); saveStore(); renderRoster(); };
+$('roster-add').onclick = () => { store.roster.push({ num:'', name:'' }); saveRoster(); renderRoster(); };
 $('roster-rows').addEventListener('input', e => {
   const n = e.target.getAttribute('data-rnum'), m = e.target.getAttribute('data-rname');
   if (n !== null) store.roster[+n].num  = e.target.value;
   if (m !== null) store.roster[+m].name = e.target.value;
-  saveStore(); drawPlayers();
+  saveRoster(); drawPlayers();
 });
 $('roster-rows').addEventListener('click', e => {
   const d = e.target.getAttribute('data-rdel');
@@ -2064,7 +2124,7 @@ $('roster-rows').addEventListener('click', e => {
   });
   store.plays.forEach(fix);
   if (S.play) fix(S.play);
-  saveStore(); renderRoster(); renderAll();
+  saveRoster(); renderRoster(); renderAll();
 });
 
 /* ---- new play ---- */
@@ -2228,12 +2288,21 @@ window.addEventListener('beforeunload', e => {
 /* ---------------------------------------------------------------
    19. GO
    --------------------------------------------------------------- */
-loadStore();
-initLayers();
-svg.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
-drawTurf();
-syncSideControls();
-defaultPlayForSide();
+(async function boot(){
+  initLayers();
+  svg.setAttribute('viewBox', `${VX} ${VY - PAD_TOP} ${VW} ${VH + PAD_TOP + PAD_BOT}`);
+  try {
+    ME = await Shell.start('app');
+    await loadStore();
+  } catch (e){
+    // Shell.start sends you to /login on an expired session; anything else is
+    // worth showing rather than leaving a blank field with no explanation.
+    if (e && e.message !== 'Signed out') toast('Could not load your playbook: ' + e.message);
+  }
+  drawTurf();
+  syncSideControls();
+  defaultPlayForSide();
+})();
 </script>
 </body>
 </html>
