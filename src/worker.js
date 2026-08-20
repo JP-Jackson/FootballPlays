@@ -11,8 +11,13 @@ import { handleUsers } from "./users.js";
 import { handlePlays } from "./plays.js";
 import { handleFeedbackSubmit, handleFeedbackAdmin } from "./feedback.js";
 
-// Reachable without signing in. Everything else needs a session.
-const PUBLIC_EXACT = new Set(["/login", "/setup", "/api/login", "/api/setup", "/favicon.ico"]);
+// Reachable without signing in. The login and setup screens are useless without
+// their stylesheet and the logo, so the shared chrome has to be public too —
+// none of it contains anything private.
+const PUBLIC_EXACT = new Set([
+  "/login", "/setup", "/api/login", "/api/setup",
+  "/shell.css", "/shell.js", "/favicon.ico",
+]);
 const PUBLIC_PREFIX = ["/brand/"];
 
 const isPublic = path =>
@@ -33,10 +38,10 @@ export default {
       if (msg.includes("SESSION_SECRET")) {
         return new Response(configPage(msg), { status: 500, headers: html() });
       }
-      console.error("Unhandled:", err?.stack || msg);
+      console.error("Unhandled error on", method, path, "-", err?.stack || msg);
       return url.pathname.startsWith("/api") || url.pathname.startsWith("/admin/api")
-        ? json({ error: "Something went wrong on our end." }, 500)
-        : new Response("Something went wrong.", { status: 500 });
+        ? json({ error: "Something went wrong on our end.", detail: msg }, 500)
+        : new Response("Something went wrong: " + msg, { status: 500 });
     }
   },
 };
@@ -46,7 +51,7 @@ async function route(request, env, url, path, method) {
 
   /* ── Before anything: has anyone set this up yet? ───────────────────── */
   const usersExist = await countUsers(env) > 0;
-  if (!usersExist && path !== "/setup" && path !== "/api/setup" && !path.startsWith("/brand/")) {
+  if (!usersExist && !isPublic(path)) {
     return isApi
       ? json({ error: "This site hasn't been set up yet." }, 503)
       : redirect("/setup");
